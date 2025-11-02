@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+
+# Flask
+instance/
+.webassets-cache
+
+# Logs
+logs/*.log
+*.log
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+
+# Environment
+.env
+
+# Test
+.pytest_cache/
+
+# Data
+data/sample/*
+!data/sample/.gitkeep
+
+# Demo files
+demo_balances.docx
+test_balances.docx
