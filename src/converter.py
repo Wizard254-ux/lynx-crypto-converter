@@ -4,6 +4,7 @@ Handles cryptocurrency conversion with wallet integration
 """
 
 from typing import Dict, List, Optional
+from datetime import datetime
 from parser import BalanceParser
 from rate_service import rate_service
 from wallet_service import wallet_service
@@ -12,97 +13,111 @@ from logger import converter_logger
 
 class CryptoConverter:
     """Main cryptocurrency converter class"""
-    
+
     def __init__(self):
-        self.parser = BalanceParser()
-        
+        pass
+
     def convert_balances(self, file_path: str, target_currency: str = 'USD') -> Dict:
         """
-        Convert cryptocurrency balances from file
-        
+        Convert USD balances from file to cryptocurrencies
+
         Args:
             file_path: Path to balance file
-            target_currency: Currency to convert to (default: USD)
-            
+            target_currency: Target currency (default: USD, used as source)
+
         Returns:
             Dict with conversion results and wallet info
         """
         try:
             # Parse balances from file
-            balances = self.parser.parse_file(file_path)
-            if not balances:
+            parser = BalanceParser(file_path)
+            balance_list = parser.parse()
+
+            if not balance_list:
                 return {'error': 'No valid balances found in file'}
-            
-            converter_logger.info(f"Parsed {len(balances)} balances from {file_path}")
-            
-            # Get current rates
-            currencies = list(balances.keys())
-            rates = rate_service.get_rates(currencies, target_currency)
-            
+
+            converter_logger.info(f"Parsed {len(balance_list)} balances from {file_path}")
+
+            # Calculate total USD amount from parsed balances
+            total_usd = sum(item['value'] for item in balance_list)
+            converter_logger.info(f"Total USD amount: ${total_usd:,.2f}")
+
+            # Get current crypto rates (USD to crypto)
+            rates = rate_service.get_rates()
+
             if not rates:
                 return {'error': 'Failed to fetch exchange rates'}
-            
-            # Perform conversions
+
+            # Convert USD to each cryptocurrency
             conversions = {}
-            total_value = 0
-            
-            for currency, amount in balances.items():
-                if currency in rates:
-                    converted_amount = amount * rates[currency]
-                    conversions[currency] = converted_amount
-                    total_value += converted_amount
-                    converter_logger.info(f"Converted {amount} {currency} to {converted_amount:.2f} {target_currency}")
-                else:
-                    converter_logger.warning(f"No rate available for {currency}")
-            
+
+            for currency, usd_rate in rates.items():
+                # Calculate how much crypto we can buy with total USD
+                # Rate is in USD per 1 crypto, so we divide
+                crypto_amount = total_usd / float(usd_rate)
+                conversions[currency] = crypto_amount
+                converter_logger.info(f"Converted ${total_usd:,.2f} USD to {crypto_amount:.8f} {currency}")
+
             # Associate with wallets
             wallet_info = wallet_service.associate_amounts_with_wallets(conversions)
-            
+
+            # Prepare rates for output (convert Decimal to float)
+            rates_output = {k: float(v) for k, v in rates.items()}
+
             return {
                 'success': True,
-                'original_balances': balances,
-                'rates': rates,
+                'parsed_balances': balance_list,
+                'total_usd_amount': total_usd,
+                'rates': rates_output,
                 'conversions': conversions,
                 'wallet_info': wallet_info,
-                'total_value': total_value,
-                'target_currency': target_currency,
-                'timestamp': rate_service.last_update
+                'timestamp': datetime.now().isoformat()
             }
-            
+
         except Exception as e:
             converter_logger.error(f"Conversion failed: {e}")
             return {'error': f'Conversion failed: {str(e)}'}
     
-    def convert_single_amount(self, amount: float, from_currency: str, to_currency: str = 'USD') -> Dict:
+    def convert_single_amount(self, amount: float, from_currency: str, to_currency: str = 'BTC') -> Dict:
         """
-        Convert a single amount between currencies
-        
+        Convert a single USD amount to cryptocurrency
+
         Args:
-            amount: Amount to convert
-            from_currency: Source currency
-            to_currency: Target currency
-            
+            amount: Amount in USD to convert
+            from_currency: Source currency (should be USD)
+            to_currency: Target cryptocurrency (BTC, ETH, USDT, SOL)
+
         Returns:
             Dict with conversion result
         """
         try:
-            rates = rate_service.get_rates([from_currency], to_currency)
-            
-            if from_currency not in rates:
-                return {'error': f'Rate not available for {from_currency}'}
-            
-            converted_amount = amount * rates[from_currency]
-            
-            return {
-                'success': True,
-                'original_amount': amount,
-                'original_currency': from_currency,
-                'converted_amount': converted_amount,
-                'target_currency': to_currency,
-                'rate': rates[from_currency],
-                'timestamp': rate_service.last_update
-            }
-            
+            # Get all crypto rates
+            rates = rate_service.get_rates()
+
+            if not rates:
+                return {'error': 'Failed to fetch exchange rates'}
+
+            # Handle USD to crypto conversion
+            if from_currency.upper() == 'USD':
+                if to_currency.upper() not in rates:
+                    return {'error': f'Rate not available for {to_currency}'}
+
+                usd_rate = float(rates[to_currency.upper()])
+                converted_amount = amount / usd_rate
+
+                return {
+                    'success': True,
+                    'original_amount': amount,
+                    'original_currency': from_currency.upper(),
+                    'converted_amount': converted_amount,
+                    'target_currency': to_currency.upper(),
+                    'rate': usd_rate,
+                    'calculation': f'{amount} USD / {usd_rate} USD per {to_currency} = {converted_amount:.8f} {to_currency}',
+                    'timestamp': datetime.now().isoformat()
+                }
+            else:
+                return {'error': 'Only USD to crypto conversion supported. Use from_currency="USD"'}
+
         except Exception as e:
             converter_logger.error(f"Single conversion failed: {e}")
             return {'error': f'Conversion failed: {str(e)}'}

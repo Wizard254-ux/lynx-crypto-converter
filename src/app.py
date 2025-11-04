@@ -8,8 +8,12 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 from converter import crypto_converter
 import logging
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -202,4 +206,4 @@ def internal_error(e):
 if __name__ == '__main__':
     logger.info("Starting Lynx Crypto Converter API...")
     logger.info("Complete cryptocurrency conversion with wallet integration")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)
