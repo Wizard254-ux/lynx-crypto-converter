@@ -1,0 +1,135 @@
+"""
+Wallet Service for Lynx Crypto Converter
+Manages wallet address validation and association
+"""
+
+import os
+import re
+from typing import Dict, Optional
+from logger import converter_logger
+
+
+class WalletService:
+    """Manages cryptocurrency wallet addresses and validation"""
+    
+    def __init__(self):
+        self.wallets = self._load_wallets_from_env()
+    
+    def _load_wallets_from_env(self) -> Dict[str, str]:
+        """Load wallet addresses from environment variables"""
+        wallets = {
+            'BTC': os.getenv('BTC_WALLET'),
+            'ETH': os.getenv('ETH_WALLET'), 
+            'USDT': os.getenv('USDT_WALLET'),
+            'SOL': os.getenv('SOL_WALLET')
+        }
+        
+        # Filter out None values
+        wallets = {k: v for k, v in wallets.items() if v}
+        converter_logger.info(f"Loaded {len(wallets)} wallet addresses from environment")
+        return wallets
+    
+    def get_wallet_address(self, currency: str) -> Optional[str]:
+        """Get wallet address for specific currency"""
+        return self.wallets.get(currency.upper())
+    
+    def validate_address(self, currency: str, address: str) -> bool:
+        """
+        Validate wallet address format for specific currency
+        
+        Args:
+            currency: Currency code (BTC, ETH, USDT, SOL)
+            address: Wallet address to validate
+            
+        Returns:
+            True if address format is valid
+        """
+        if not address:
+            return False
+        
+        currency = currency.upper()
+        
+        try:
+            if currency == 'BTC':
+                return self._validate_btc_address(address)
+            elif currency == 'ETH':
+                return self._validate_eth_address(address)
+            elif currency == 'USDT':
+                # USDT can be on multiple chains, check common formats
+                return (self._validate_eth_address(address) or 
+                       self._validate_tron_address(address))
+            elif currency == 'SOL':
+                return self._validate_sol_address(address)
+            else:
+                return False
+        except Exception as e:
+            converter_logger.error(f"Address validation error for {currency}: {e}")
+            return False
+    
+    def _validate_btc_address(self, address: str) -> bool:
+        """Validate Bitcoin address format"""
+        # Legacy (P2PKH): starts with 1, 26-35 chars
+        # SegWit (P2SH): starts with 3, 26-35 chars  
+        # Bech32 (P2WPKH/P2WSH): starts with bc1, 42+ chars
+        
+        if re.match(r'^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$', address):
+            return True
+        if re.match(r'^bc1[a-z0-9]{39,59}$', address):
+            return True
+        return False
+    
+    def _validate_eth_address(self, address: str) -> bool:
+        """Validate Ethereum address format"""
+        # Ethereum addresses: 0x followed by 40 hex characters
+        return bool(re.match(r'^0x[a-fA-F0-9]{40}$', address))
+    
+    def _validate_tron_address(self, address: str) -> bool:
+        """Validate Tron address format"""
+        # Tron addresses: T followed by 33 base58 characters
+        return bool(re.match(r'^T[A-Za-z0-9]{33}$', address))
+    
+    def _validate_sol_address(self, address: str) -> bool:
+        """Validate Solana address format"""
+        # Solana addresses: 32-44 base58 characters
+        return bool(re.match(r'^[1-9A-HJ-NP-Za-km-z]{32,44}$', address))
+    
+    def associate_amounts_with_wallets(self, conversions: Dict[str, float]) -> Dict[str, Dict]:
+        """
+        Associate converted amounts with wallet addresses
+        
+        Args:
+            conversions: Dict of currency -> amount
+            
+        Returns:
+            Dict with currency -> {address, amount, valid}
+        """
+        result = {}
+        
+        for currency, amount in conversions.items():
+            wallet_address = self.get_wallet_address(currency)
+            
+            if wallet_address:
+                is_valid = self.validate_address(currency, wallet_address)
+                if not is_valid:
+                    converter_logger.invalid_wallet(currency, wallet_address)
+                
+                result[currency] = {
+                    'address': wallet_address,
+                    'amount': amount,
+                    'valid': is_valid
+                }
+            else:
+                converter_logger.warning(f"No wallet address configured for {currency}")
+                result[currency] = {
+                    'address': None,
+                    'amount': amount,
+                    'valid': False
+                }
+        
+        return result
+    
+
+
+
+# Global wallet service instance
+wallet_service = WalletService()

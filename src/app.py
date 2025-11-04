@@ -1,6 +1,6 @@
 """
 Flask API Server for Lynx Crypto Converter
-Milestone 1: Balance file upload and parsing
+Complete cryptocurrency conversion with wallet integration
 """
 
 from flask import Flask, request, jsonify
@@ -8,7 +8,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
-from parser import BalanceParser
+from converter import crypto_converter
 import logging
 
 # Initialize Flask app
@@ -55,103 +55,19 @@ def health_check():
     }), 200
 
 
-@app.route('/api/parse', methods=['POST'])
-def parse_balance_file():
+@app.route('/api/convert', methods=['POST'])
+def convert_balances():
     """
-    Parse balance file and extract numeric values
+    Convert cryptocurrency balances with wallet integration
     
     Request:
         - file: Balance file (.docx or .dox)
+        - target_currency: Target currency (optional, default: USD)
     
     Response:
-        - balances: List of extracted balance values
-        - summary: Statistics summary
-        - metadata: File information
-    """
-    try:
-        # Check if file is present
-        if 'file' not in request.files:
-            return jsonify({
-                'error': 'No file provided',
-                'message': 'Please upload a balance file'
-            }), 400
-        
-        file = request.files['file']
-        
-        # Check if file is selected
-        if file.filename == '':
-            return jsonify({
-                'error': 'No file selected',
-                'message': 'Please select a file to upload'
-            }), 400
-        
-        # Validate file type
-        if not allowed_file(file.filename):
-            return jsonify({
-                'error': 'Invalid file type',
-                'message': f'Only {", ".join(ALLOWED_EXTENSIONS)} files are allowed'
-            }), 400
-        
-        # Save file
-        filename = secure_filename(file.filename)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        unique_filename = f"{timestamp}_{filename}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        
-        file.save(filepath)
-        logger.info(f"File uploaded: {unique_filename}")
-        
-        # Parse file
-        parser = BalanceParser(filepath)
-        balances = parser.parse()
-        summary = parser.get_summary()
-        
-        logger.info(f"Parsed {len(balances)} values from {filename}")
-        
-        # Prepare response
-        response = {
-            'success': True,
-            'message': 'File parsed successfully',
-            'data': {
-                'balances': balances,
-                'summary': summary
-            },
-            'metadata': {
-                'filename': filename,
-                'upload_time': timestamp,
-                'file_size': os.path.getsize(filepath)
-            }
-        }
-        
-        return jsonify(response), 200
-    
-    except FileNotFoundError as e:
-        logger.error(f"File not found: {str(e)}")
-        return jsonify({
-            'error': 'File not found',
-            'message': str(e)
-        }), 404
-    
-    except ValueError as e:
-        logger.error(f"Validation error: {str(e)}")
-        return jsonify({
-            'error': 'Validation error',
-            'message': str(e)
-        }), 400
-    
-    except Exception as e:
-        logger.error(f"Parsing error: {str(e)}")
-        return jsonify({
-            'error': 'Processing error',
-            'message': str(e)
-        }), 500
-
-
-@app.route('/api/validate', methods=['POST'])
-def validate_file():
-    """
-    Quick validation endpoint to check if file can be parsed
-    Returns only summary without full balance details
+        - conversions: Converted amounts
+        - wallet_info: Associated wallet addresses
+        - total_value: Total portfolio value
     """
     try:
         if 'file' not in request.files:
@@ -162,34 +78,98 @@ def validate_file():
         if file.filename == '' or not allowed_file(file.filename):
             return jsonify({'error': 'Invalid file'}), 400
         
-        # Save temporarily
+        # Save file
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        unique_filename = f"validate_{timestamp}_{filename}"
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        
+        file.save(filepath)
+        logger.info(f"File uploaded: {unique_filename}")
+        
+        # Get target currency from request
+        target_currency = request.form.get('target_currency', 'USD')
+        
+        # Convert balances
+        result = crypto_converter.convert_balances(filepath, target_currency)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result), 200
+    
+    except Exception as e:
+        logger.error(f"Conversion error: {str(e)}")
+        return jsonify({'error': f'Conversion failed: {str(e)}'}), 500
+
+
+@app.route('/api/portfolio', methods=['POST'])
+def get_portfolio_summary():
+    """
+    Get complete portfolio summary with wallet validation
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        
+        if file.filename == '' or not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file'}), 400
+        
+        # Save file
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         
         file.save(filepath)
         
-        # Parse and get summary only
-        parser = BalanceParser(filepath)
-        parser.parse()
-        summary = parser.get_summary()
+        # Get portfolio summary
+        result = crypto_converter.get_portfolio_summary(filepath)
         
-        # Clean up temporary file
-        os.remove(filepath)
+        if 'error' in result:
+            return jsonify(result), 400
         
-        return jsonify({
-            'valid': True,
-            'summary': summary,
-            'message': 'File is valid and can be parsed'
-        }), 200
+        return jsonify(result), 200
     
     except Exception as e:
-        logger.error(f"Validation error: {str(e)}")
-        return jsonify({
-            'valid': False,
-            'error': str(e)
-        }), 400
+        logger.error(f"Portfolio error: {str(e)}")
+        return jsonify({'error': f'Portfolio analysis failed: {str(e)}'}), 500
+
+
+@app.route('/api/convert-single', methods=['POST'])
+def convert_single_amount():
+    """
+    Convert a single amount between currencies
+    
+    Request JSON:
+        - amount: Amount to convert
+        - from_currency: Source currency
+        - to_currency: Target currency (optional, default: USD)
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'amount' not in data or 'from_currency' not in data:
+            return jsonify({'error': 'Missing required fields: amount, from_currency'}), 400
+        
+        amount = float(data['amount'])
+        from_currency = data['from_currency'].upper()
+        to_currency = data.get('to_currency', 'USD').upper()
+        
+        result = crypto_converter.convert_single_amount(amount, from_currency, to_currency)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result), 200
+    
+    except ValueError:
+        return jsonify({'error': 'Invalid amount value'}), 400
+    except Exception as e:
+        logger.error(f"Single conversion error: {str(e)}")
+        return jsonify({'error': f'Conversion failed: {str(e)}'}), 500
 
 
 @app.errorhandler(413)
@@ -221,5 +201,5 @@ def internal_error(e):
 
 if __name__ == '__main__':
     logger.info("Starting Lynx Crypto Converter API...")
-    logger.info("Milestone 1: Setup & Validation")
+    logger.info("Complete cryptocurrency conversion with wallet integration")
     app.run(host='0.0.0.0', port=5000, debug=True)

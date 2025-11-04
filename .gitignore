@@ -22,15 +22,20 @@ uploads/*
 .vscode/
 .idea/
 *.swp
+*.swo
 
 # OS
 .DS_Store
+Thumbs.db
 
 # Environment
 .env
+*.env
 
 # Test
 .pytest_cache/
+.coverage
+htmlcov/
 
 # Data
 data/sample/*
