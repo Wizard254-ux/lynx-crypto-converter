@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Lynx Crypto Converter
+Comment=Cryptocurrency balance converter with live rates
+Exec=%PROJECT_DIR%/lynx-launcher.sh
+Icon=%PROJECT_DIR%/assets/lynx-icon.png
+Terminal=true
+Categories=Office;Finance;Utility;
+Keywords=crypto;cryptocurrency;bitcoin;ethereum;converter;finance;
+StartupNotify=true
+Path=%PROJECT_DIR%
