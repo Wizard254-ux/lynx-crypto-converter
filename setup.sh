@@ -123,6 +123,7 @@ flask-cors==4.0.0
 pytest==7.4.3
 tabulate==0.9.0
 python-dotenv
+requests
 EOF
 print_success "requirements.txt created"
 
