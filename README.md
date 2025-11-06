@@ -1,5 +1,7 @@
 # Lynx Crypto Converter
 
+![Lynx Crypto Converter](assets/img.png)
+
 ## Status: Milestone 1 Complete ✅
 
 Balance file parser with CLI and API interface.
