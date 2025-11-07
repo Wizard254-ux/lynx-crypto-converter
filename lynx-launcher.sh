@@ -76,9 +76,13 @@ if curl -s http://localhost:5001/health > /dev/null; then
             "api")
                 echo "Opening API documentation..."
                 if command -v xdg-open > /dev/null; then
-                    xdg-open "http://localhost:5001/health"
+                    xdg-open "http://localhost:5001/"
+                elif command -v open > /dev/null; then
+                    open "http://localhost:5001/"
                 else
-                    echo "🌐 API Health: http://localhost:5001/health"
+                    echo "🌐 API Documentation: http://localhost:5001/"
+                    echo "📋 JSON API Docs: http://localhost:5001/api/docs"
+                    echo "❤️  Health Check: http://localhost:5001/health"
                 fi
                 ;;
             "stop")

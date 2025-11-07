@@ -87,7 +87,8 @@ Milestone 3 consolidates all previous work into a production-ready system with c
 python cli.py demo                    # Create and test demo file
 python cli.py parse file.docx         # Parse balance file
 python cli.py validate file.docx      # Validate file format
-python cli.py convert file.docx       # Convert to crypto (M2 feature)
+python cli.py convert file.docx       # Convert to crypto via API
+python cli.py api                     # Open API documentation
 
 # Advanced Options
 python cli.py parse file.docx --detailed     # Show all balances
@@ -107,9 +108,9 @@ python cli.py convert file.docx --currency BTC   # Specific crypto
 
 **API Endpoints:**
 ```
-GET  /health                 # System health check
-POST /api/parse             # Parse balance files (M1)
-POST /api/validate          # Validate files (M1)
+GET  /                      # HTML API Documentation (NEW)
+GET  /health                # System health check
+GET  /api/docs              # JSON API Specification (NEW)
 POST /api/convert           # Convert to crypto (M2)
 POST /api/portfolio         # Portfolio analysis (M2)
 POST /api/convert-single    # Single conversions (M2)
@@ -246,7 +247,15 @@ if curl -s http://localhost:5001/health > /dev/null; then
                 ;;
             "api")
                 echo "Opening API documentation..."
-                xdg-open "http://localhost:5001/health"
+                if command -v xdg-open > /dev/null; then
+                    xdg-open "http://localhost:5001/"
+                elif command -v open > /dev/null; then
+                    open "http://localhost:5001/"
+                else
+                    echo "🌐 API Documentation: http://localhost:5001/"
+                    echo "📋 JSON API Docs: http://localhost:5001/api/docs"
+                    echo "❤️  Health Check: http://localhost:5001/health"
+                fi
                 ;;
             "stop")
                 echo "Stopping server..."
@@ -286,6 +295,71 @@ update-desktop-database ~/.local/share/applications/
 
 ---
 
+## 📝 API Documentation System (New)
+
+### Comprehensive Documentation Suite
+
+**HTML Documentation** (`http://localhost:5001/`)
+- Professional styled interface with server status
+- Complete endpoint descriptions with examples
+- Interactive curl command examples
+- File requirements and limitations
+- Quick navigation links
+- Real-time server status display
+
+**JSON API Specification** (`http://localhost:5001/api/docs`)
+- Machine-readable API specification
+- Complete parameter definitions
+- Response format descriptions
+- Usage examples and curl commands
+- Supported file formats and limits
+
+**CLI Integration**
+- `python cli.py api` - Opens documentation in browser
+- Server status validation before opening
+- Cross-platform browser support (xdg-open, open)
+- Fallback URL display for manual access
+
+**Launcher Integration**
+- `api` command in interactive menu
+- Automatic browser opening
+- Multiple URL options displayed
+- Error handling for server not running
+
+### Documentation Features
+
+```html
+<!-- HTML Documentation Includes -->
+• Styled endpoint cards with method badges
+• Syntax-highlighted code examples
+• Copy-paste ready curl commands
+• Parameter descriptions and requirements
+• Response format specifications
+• File upload requirements
+• Quick links to health check and JSON docs
+```
+
+```json
+// JSON Documentation Includes
+{
+  "title": "Lynx Crypto Converter API",
+  "version": "3.0",
+  "endpoints": {
+    "/api/convert": {
+      "method": "POST",
+      "description": "Convert cryptocurrency balances",
+      "parameters": {...},
+      "response": {...}
+    }
+  },
+  "examples": {
+    "curl_convert": "curl -X POST -F 'file=@balances.docx' ..."
+  }
+}
+```
+
+---
+
 ## 📊 Complete Feature Matrix
 
 ### Core Features Status
@@ -294,6 +368,23 @@ update-desktop-database ~/.local/share/applications/
 |---------|----|----|----|---------| 
 | **File Parsing** | ✅ | ✅ | ✅ | Complete |
 | Balance extraction | ✅ | ✅ | ✅ | Production ready |
+| **API Documentation** | ❌ | ❌ | ✅ | Complete |
+| HTML documentation | ❌ | ❌ | ✅ | Production ready |
+| JSON API specification | ❌ | ❌ | ✅ | Production ready |
+| Interactive browser docs | ❌ | ❌ | ✅ | Production ready |
+| **CLI Enhancements** | ✅ | ✅ | ✅ | Complete |
+| Convert command | ❌ | ❌ | ✅ | Production ready |
+| API command | ❌ | ❌ | ✅ | Production ready |
+| **Cryptocurrency Conversion** | ❌ | ✅ | ✅ | Complete |
+| Live rate integration | ❌ | ✅ | ✅ | Production ready |
+| Multi-currency support | ❌ | ✅ | ✅ | Production ready |
+| **Wallet Integration** | ❌ | ✅ | ✅ | Complete |
+| Address validation | ❌ | ✅ | ✅ | Production ready |
+| Portfolio analysis | ❌ | ✅ | ✅ | Production ready |
+| **Desktop Integration** | ❌ | ❌ | ✅ | Complete |
+| Linux Mint launcher | ❌ | ❌ | ✅ | Production ready |
+| Interactive menu | ❌ | ❌ | ✅ | Production ready |
+| Background service | ❌ | ❌ | ✅ | Production ready |
 | Multiple formats | ✅ | ✅ | ✅ | USD, EUR, etc. |
 | Statistics | ✅ | ✅ | ✅ | Min/Max/Avg/Total |
 | **Crypto Conversion** | ❌ | ✅ | ✅ | Complete |
