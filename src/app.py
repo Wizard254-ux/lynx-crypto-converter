@@ -196,7 +196,7 @@ def api_docs_html():
                     • from_currency: Source currency - Required<br>
                     • to_currency: Target currency (optional, default: USD)
                 </div>
-                <div class="example">curl -X POST -H "Content-Type: application/json" -d '{"amount": 1.5, "from_currency": "BTC", "to_currency": "USD"}' http://localhost:5001/api/convert-single</div>
+                <div class="example">curl -X POST -H "Content-Type: application/json" -d '{{"amount": 1.5, "from_currency": "BTC", "to_currency": "USD"}}' http://localhost:5001/api/convert-single</div>
             </div>
             
             <div class="endpoint">
