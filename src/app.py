@@ -59,6 +59,171 @@ def health_check():
     }), 200
 
 
+@app.route('/api/docs', methods=['GET'])
+def api_documentation():
+    """API Documentation endpoint"""
+    docs = {
+        'title': 'Lynx Crypto Converter API',
+        'version': '3.0',
+        'description': 'Complete cryptocurrency conversion with wallet integration',
+        'base_url': 'http://localhost:5001',
+        'endpoints': {
+            '/health': {
+                'method': 'GET',
+                'description': 'Health check endpoint',
+                'response': {
+                    'status': 'healthy',
+                    'service': 'Lynx Crypto Converter',
+                    'timestamp': 'ISO datetime'
+                }
+            },
+            '/api/convert': {
+                'method': 'POST',
+                'description': 'Convert cryptocurrency balances with wallet integration',
+                'content_type': 'multipart/form-data',
+                'parameters': {
+                    'file': 'Balance file (.docx or .dox) - Required',
+                    'target_currency': 'Target currency (optional, default: USD)'
+                },
+                'response': {
+                    'conversions': 'Converted amounts',
+                    'wallet_info': 'Associated wallet addresses',
+                    'total_value': 'Total portfolio value'
+                }
+            },
+            '/api/portfolio': {
+                'method': 'POST',
+                'description': 'Get complete portfolio summary with wallet validation',
+                'content_type': 'multipart/form-data',
+                'parameters': {
+                    'file': 'Balance file (.docx or .dox) - Required'
+                },
+                'response': {
+                    'portfolio_summary': 'Complete portfolio analysis',
+                    'wallet_validation': 'Wallet address validation results'
+                }
+            },
+            '/api/convert-single': {
+                'method': 'POST',
+                'description': 'Convert a single amount between currencies',
+                'content_type': 'application/json',
+                'parameters': {
+                    'amount': 'Amount to convert (number) - Required',
+                    'from_currency': 'Source currency (string) - Required',
+                    'to_currency': 'Target currency (string, optional, default: USD)'
+                },
+                'response': {
+                    'converted_amount': 'Converted value',
+                    'exchange_rate': 'Current exchange rate',
+                    'timestamp': 'Conversion timestamp'
+                }
+            }
+        },
+        'supported_formats': ['.docx', '.dox'],
+        'max_file_size': '10MB',
+        'examples': {
+            'curl_convert': 'curl -X POST -F "file=@balances.docx" http://localhost:5001/api/convert',
+            'curl_single': 'curl -X POST -H "Content-Type: application/json" -d \'{"amount": 1.5, "from_currency": "BTC", "to_currency": "USD"}\' http://localhost:5001/api/convert-single'
+        }
+    }
+    return jsonify(docs), 200
+
+
+@app.route('/', methods=['GET'])
+def api_docs_html():
+    """Serve HTML API documentation"""
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Lynx Crypto Converter API Documentation</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }}
+            .container {{ max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+            h1 {{ color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }}
+            h2 {{ color: #34495e; margin-top: 30px; }}
+            .endpoint {{ background: #ecf0f1; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #3498db; }}
+            .method {{ background: #3498db; color: white; padding: 3px 8px; border-radius: 3px; font-size: 12px; }}
+            .path {{ font-family: monospace; font-weight: bold; margin-left: 10px; }}
+            .description {{ margin: 10px 0; color: #555; }}
+            .params {{ background: #fff; padding: 10px; border-radius: 3px; margin: 5px 0; }}
+            .example {{ background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 5px; font-family: monospace; overflow-x: auto; }}
+            .status {{ background: #27ae60; color: white; padding: 5px 10px; border-radius: 3px; display: inline-block; margin: 10px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🦌 Lynx Crypto Converter API v3.0</h1>
+            <div class="status">Server Status: Online</div>
+            <p><strong>Base URL:</strong> http://localhost:5001</p>
+            <p><strong>Description:</strong> Complete cryptocurrency conversion with wallet integration</p>
+            
+            <h2>📋 Available Endpoints</h2>
+            
+            <div class="endpoint">
+                <span class="method">GET</span><span class="path">/health</span>
+                <div class="description">Health check endpoint to verify server status</div>
+                <div class="params"><strong>Response:</strong> Server status and timestamp</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">POST</span><span class="path">/api/convert</span>
+                <div class="description">Convert cryptocurrency balances with wallet integration</div>
+                <div class="params">
+                    <strong>Parameters:</strong><br>
+                    • file: Balance file (.docx or .dox) - Required<br>
+                    • target_currency: Target currency (optional, default: USD)
+                </div>
+                <div class="example">curl -X POST -F "file=@balances.docx" http://localhost:5001/api/convert</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">POST</span><span class="path">/api/portfolio</span>
+                <div class="description">Get complete portfolio summary with wallet validation</div>
+                <div class="params">
+                    <strong>Parameters:</strong><br>
+                    • file: Balance file (.docx or .dox) - Required
+                </div>
+                <div class="example">curl -X POST -F "file=@balances.docx" http://localhost:5001/api/portfolio</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">POST</span><span class="path">/api/convert-single</span>
+                <div class="description">Convert a single amount between currencies</div>
+                <div class="params">
+                    <strong>JSON Parameters:</strong><br>
+                    • amount: Amount to convert (number) - Required<br>
+                    • from_currency: Source currency - Required<br>
+                    • to_currency: Target currency (optional, default: USD)
+                </div>
+                <div class="example">curl -X POST -H "Content-Type: application/json" -d '{"amount": 1.5, "from_currency": "BTC", "to_currency": "USD"}' http://localhost:5001/api/convert-single</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span><span class="path">/api/docs</span>
+                <div class="description">Get API documentation in JSON format</div>
+                <div class="params"><strong>Response:</strong> Complete API specification</div>
+            </div>
+            
+            <h2>📝 File Requirements</h2>
+            <ul>
+                <li>Supported formats: .docx, .dox</li>
+                <li>Maximum file size: 10MB</li>
+                <li>Files should contain cryptocurrency balance information</li>
+            </ul>
+            
+            <h2>🔗 Quick Links</h2>
+            <ul>
+                <li><a href="/health">Health Check</a></li>
+                <li><a href="/api/docs">JSON Documentation</a></li>
+            </ul>
+        </div>
+    </body>
+    </html>
+    """
+    return html
+
+
 @app.route('/api/convert', methods=['POST'])
 def convert_balances():
     """

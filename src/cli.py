@@ -8,6 +8,9 @@ import sys
 from parser import BalanceParser
 from tabulate import tabulate
 import json
+import webbrowser
+import subprocess
+import requests
 
 
 def print_banner():
@@ -124,6 +127,99 @@ def validate_command(args):
         return 1
 
 
+def convert_command(args):
+    """Handle convert command"""
+    print(f"\n🔄 Converting file: {args.file}")
+    print("=" * 60)
+    
+    api_url = "http://localhost:5001/api/convert"
+    health_url = "http://localhost:5001/health"
+    
+    try:
+        # Check if server is running
+        response = requests.get(health_url, timeout=3)
+        if response.status_code != 200:
+            print("❌ API server is not running")
+            print("💡 Start the server first with: python app.py")
+            return 1
+        
+        print("✅ API server is running")
+        
+        # Check if file exists
+        import os
+        if not os.path.exists(args.file):
+            print(f"❌ File not found: {args.file}")
+            return 1
+        
+        # Send file to API
+        with open(args.file, 'rb') as f:
+            files = {'file': f}
+            data = {}
+            if args.currency:
+                data['target_currency'] = args.currency
+            
+            print(f"🚀 Sending file to API for conversion...")
+            response = requests.post(api_url, files=files, data=data, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            print("\n✅ Conversion completed successfully!")
+            print(json.dumps(result, indent=2))
+        else:
+            error = response.json() if response.headers.get('content-type') == 'application/json' else {'error': response.text}
+            print(f"\n❌ Conversion failed: {error.get('error', 'Unknown error')}")
+            return 1
+            
+    except requests.exceptions.ConnectionError:
+        print("❌ API server is not running")
+        print("💡 Start the server first with: python app.py")
+        return 1
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return 1
+    
+    return 0
+
+
+def api_command(args):
+    """Handle api command"""
+    print("\n🌐 Opening API Documentation...")
+    print("=" * 60)
+    
+    api_url = "http://localhost:5001/"
+    health_url = "http://localhost:5001/health"
+    
+    try:
+        # Check if server is running
+        response = requests.get(health_url, timeout=3)
+        if response.status_code == 200:
+            print("✅ API server is running")
+            
+            # Try to open in browser
+            if webbrowser.open(api_url):
+                print(f"🌐 Opened API documentation in browser: {api_url}")
+            else:
+                print(f"🌐 Please open in browser: {api_url}")
+                
+            print(f"📋 JSON API Docs: {api_url}api/docs")
+            print(f"❤️  Health Check: {health_url}")
+            
+        else:
+            print("❌ API server responded with error")
+            return 1
+            
+    except requests.exceptions.ConnectionError:
+        print("❌ API server is not running")
+        print("💡 Start the server first with: python app.py")
+        print("💡 Or use the launcher: ./lynx-launcher.sh")
+        return 1
+    except Exception as e:
+        print(f"❌ Error connecting to API: {e}")
+        return 1
+    
+    return 0
+
+
 def demo_command(args):
     """Handle demo command"""
     print("\n🎬 DEMO MODE - Creating sample balance file...")
@@ -191,6 +287,15 @@ Examples:
   
   Run demo:
     python cli.py demo
+  
+  Convert balance file:
+    python cli.py convert balances.docx
+  
+  Convert to specific currency:
+    python cli.py convert balances.docx --currency EUR
+  
+  Open API documentation:
+    python cli.py api
         """
     )
     
@@ -209,6 +314,14 @@ Examples:
     # Demo command
     demo_parser = subparsers.add_parser('demo', help='Run demo with sample data')
     
+    # Convert command
+    convert_parser = subparsers.add_parser('convert', help='Convert balance file using API')
+    convert_parser.add_argument('file', help='Path to balance file (.docx or .dox)')
+    convert_parser.add_argument('-c', '--currency', help='Target currency (default: USD)')
+    
+    # API command
+    api_parser = subparsers.add_parser('api', help='Open API documentation')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -222,6 +335,10 @@ Examples:
         return validate_command(args)
     elif args.command == 'demo':
         return demo_command(args)
+    elif args.command == 'convert':
+        return convert_command(args)
+    elif args.command == 'api':
+        return api_command(args)
     
     return 0
 
