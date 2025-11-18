@@ -17,13 +17,14 @@ class CryptoConverter:
     def __init__(self):
         pass
 
-    def convert_balances(self, file_path: str, target_currency: str = 'USD') -> Dict:
+    def convert_balances(self, file_path: str, target_currency: str = 'USD', send_to_wallet: bool = False) -> Dict:
         """
         Convert USD balances from file to cryptocurrencies
 
         Args:
             file_path: Path to balance file
             target_currency: Target currency (default: USD, used as source)
+            send_to_wallet: Whether to send converted amounts to wallet
 
         Returns:
             Dict with conversion results and wallet info
@@ -61,10 +62,17 @@ class CryptoConverter:
             # Associate with wallets
             wallet_info = wallet_service.associate_amounts_with_wallets(conversions)
 
+            # Send to wallet if requested
+            wallet_transactions = []
+            if send_to_wallet:
+                for currency, amount in conversions.items():
+                    transaction = wallet_service.send_to_wallet(currency, amount)
+                    wallet_transactions.append(transaction)
+
             # Prepare rates for output (convert Decimal to float)
             rates_output = {k: float(v) for k, v in rates.items()}
 
-            return {
+            result = {
                 'success': True,
                 'parsed_balances': balance_list,
                 'total_usd_amount': total_usd,
@@ -73,6 +81,11 @@ class CryptoConverter:
                 'wallet_info': wallet_info,
                 'timestamp': datetime.now().isoformat()
             }
+
+            if send_to_wallet:
+                result['wallet_transactions'] = wallet_transactions
+
+            return result
 
         except Exception as e:
             converter_logger.error(f"Conversion failed: {e}")
@@ -146,6 +159,35 @@ class CryptoConverter:
         }
         
         result['wallet_summary'] = wallet_summary
+        return result
+    
+    def send_converted_amounts_to_wallet(self, file_path: str, wallet_id: str = None) -> Dict:
+        """
+        Convert balances and send to client's wallet
+        
+        Args:
+            file_path: Path to balance file
+            wallet_id: Wallet ID (defaults to client address)
+            
+        Returns:
+            Dict with conversion and transaction results
+        """
+        # First convert the balances
+        result = self.convert_balances(file_path)
+        
+        if not result.get('success'):
+            return result
+        
+        # Send each converted amount to wallet
+        wallet_transactions = []
+        for currency, amount in result['conversions'].items():
+            transaction = wallet_service.send_to_wallet(currency, amount, wallet_id)
+            wallet_transactions.append(transaction)
+        
+        result['wallet_transactions'] = wallet_transactions
+        result['sent_to_wallet'] = True
+        
+        converter_logger.info(f"Sent {len(wallet_transactions)} converted amounts to wallet")
         return result
 
 

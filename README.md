@@ -1,10 +1,8 @@
 # Lynx Crypto Converter
 
-![Lynx Crypto Converter](assets/img.png)
+## Status: Milestone 1 Complete ✅
 
-## Status: Milestone 3 Complete ✅
-
-Production-ready cryptocurrency converter with comprehensive API documentation and desktop integration.
+Balance file parser with CLI and API interface.
 
 ## Quick Start
 
@@ -18,15 +16,11 @@ source venv/bin/activate
 ./commands.sh demo
 ```
 
-### 3. Start System (Desktop Launcher)
-```bash
-./lynx-launcher.sh
-```
-Or start API server manually:
+### 3. Start API Server
 ```bash
 ./commands.sh start
 ```
-API available at: http://localhost:5001
+API available at: http://localhost:5000
 
 ### 4. Test API
 ```bash
@@ -55,48 +49,23 @@ python cli.py parse balances.docx --output results.json
 
 # Validate file
 python cli.py validate balances.docx
-
-# Convert to cryptocurrency (NEW)
-python cli.py convert balances.docx
-
-# Convert to specific currency (NEW)
-python cli.py convert balances.docx --currency BTC
-
-# Open API documentation (NEW)
-python cli.py api
 ```
 
 ### API Usage
 
 **Health Check:**
 ```bash
-curl http://localhost:5001/health
+curl http://localhost:5000/health
 ```
 
-**API Documentation:**
+**Parse File:**
 ```bash
-# HTML Documentation
-open http://localhost:5001/
-
-# JSON API Specification
-curl http://localhost:5001/api/docs
+curl -X POST -F "file=@balances.docx" http://localhost:5000/api/parse
 ```
 
-**Convert Balances:**
+**Validate File:**
 ```bash
-curl -X POST -F "file=@balances.docx" http://localhost:5001/api/convert
-```
-
-**Portfolio Summary:**
-```bash
-curl -X POST -F "file=@balances.docx" http://localhost:5001/api/portfolio
-```
-
-**Single Conversion:**
-```bash
-curl -X POST -H "Content-Type: application/json" \
-  -d '{"amount": 1.5, "from_currency": "BTC", "to_currency": "USD"}' \
-  http://localhost:5001/api/convert-single
+curl -X POST -F "file=@balances.docx" http://localhost:5000/api/validate
 ```
 
 ## Project Structure
@@ -119,27 +88,24 @@ lynx-crypto-converter/
 
 ## API Endpoints
 
-| Method | Endpoint           | Description                    |
-|--------|--------------------|--------------------------------|
-| GET    | /                  | HTML API Documentation        |
-| GET    | /health            | Health check                   |
-| GET    | /api/docs          | JSON API Specification         |
-| POST   | /api/convert       | Convert balances to crypto     |
-| POST   | /api/portfolio     | Portfolio summary & validation |
-| POST   | /api/convert-single| Single amount conversion       |
+| Method | Endpoint       | Description              |
+|--------|----------------|--------------------------|
+| GET    | /health        | Health check             |
+| POST   | /api/parse     | Parse balance file       |
+| POST   | /api/validate  | Validate file format     |
 
 ## What It Does
 
-**Complete Features:**
-- ✅ Balance file parsing (.docx, .dox)
-- ✅ Cryptocurrency conversion (BTC, ETH, USDT, SOL, etc.)
-- ✅ Live exchange rates with fallback
-- ✅ Wallet address validation
-- ✅ Portfolio analysis and summaries
-- ✅ Comprehensive API documentation
-- ✅ Desktop integration (Linux Mint)
-- ✅ CLI and web interfaces
-- ✅ Production-ready deployment
+**Milestone 1:**
+- Reads .docx balance files
+- Extracts all numeric values
+- Returns via CLI or API
+- Calculates totals and statistics
+
+**Coming in Milestone 2:**
+- Crypto conversion (BTC, ETH, USDT, SOL)
+- Live exchange rates
+- Wallet integration
 
 ## Troubleshooting
 
@@ -165,26 +131,12 @@ pip install -r requirements.txt
 - 100MB disk space
 - Internet connection (for pip install)
 
-## Desktop Integration
+## Next Steps for Milestone 2
 
-**Install Desktop Launcher:**
-```bash
-./install-desktop.sh
-```
-
-**Manual Desktop Entry:**
-```bash
-cp lynx-crypto-converter.desktop ~/.local/share/applications/
-update-desktop-database ~/.local/share/applications/
-```
-
-**Interactive Launcher Commands:**
-- `demo` - Run demonstration
-- `parse` - Parse balance file
-- `convert` - Convert to cryptocurrency
-- `api` - Open API documentation
-- `stop` - Stop background server
-- `help` - Show detailed help
+Provide:
+1. Real balance .docx files (3-5 samples)
+2. Wallet addresses (BTC, ETH, USDT, SOL)
+3. CoinGecko API key or exchange keys
 
 ## Support
 

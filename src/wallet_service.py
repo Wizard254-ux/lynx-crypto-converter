@@ -128,6 +128,84 @@ class WalletService:
         
         return result
     
+    async def send_to_wallet(self, currency: str, amount: float, wallet_id: str = None) -> Dict:
+        """
+        Send converted amount to wallet (actual blockchain transaction)
+        
+        Args:
+            currency: Currency code (ETH, USDT, USDC)
+            amount: Amount to send
+            wallet_id: Optional wallet ID (defaults to client address)
+            
+        Returns:
+            Dict with transaction result
+        """
+        from datetime import datetime
+        from dotenv import load_dotenv
+        
+        load_dotenv()
+        
+        # Use client's specified address or env variable
+        client_address = os.getenv('EURC_WALLET', '0xa67e2dab68568ccede61769d3627bd3b0911f3a8')
+        wallet_address = wallet_id or client_address
+        
+        # Check if we can send this currency
+        if currency.upper() not in ['ETH', 'USDT', 'USDC']:
+            return {
+                'success': False,
+                'error': f'Currency {currency} not supported for blockchain transactions',
+                'currency': currency,
+                'amount': amount,
+                'wallet_address': wallet_address,
+                'timestamp': datetime.now().isoformat()
+            }
+        
+        try:
+            # Import transaction service
+            from transaction_service import transaction_service
+            
+            # Send actual transaction
+            result = await transaction_service.send_eth(
+                to_address=wallet_address,
+                amount_eth=amount,
+                currency=currency
+            )
+            
+            # Format response
+            if 'error' in result:
+                converter_logger.error(f"Transaction failed: {result['error']}")
+                return {
+                    'success': False,
+                    'error': result['error'],
+                    'currency': currency,
+                    'amount': amount,
+                    'wallet_address': wallet_address,
+                    'timestamp': datetime.now().isoformat()
+                }
+            else:
+                converter_logger.info(f"Sent {amount:.8f} {currency} to {wallet_address}. TX: {result.get('tx_hash')}")
+                return {
+                    'success': True,
+                    'currency': currency,
+                    'amount': amount,
+                    'wallet_address': wallet_address,
+                    'transaction_type': 'blockchain_send',
+                    'status': result.get('status', 'pending'),
+                    'tx_hash': result.get('tx_hash'),
+                    'timestamp': datetime.now().isoformat()
+                }
+                
+        except Exception as e:
+            converter_logger.error(f"Error sending {currency}: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'currency': currency,
+                'amount': amount,
+                'wallet_address': wallet_address,
+                'timestamp': datetime.now().isoformat()
+            }
+    
 
 
 

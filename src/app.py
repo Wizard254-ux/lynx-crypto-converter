@@ -117,6 +117,20 @@ def api_documentation():
                     'exchange_rate': 'Current exchange rate',
                     'timestamp': 'Conversion timestamp'
                 }
+            },
+            '/api/send-to-wallet': {
+                'method': 'POST',
+                'description': 'Convert balances and send to client wallet',
+                'content_type': 'multipart/form-data',
+                'parameters': {
+                    'file': 'Balance file (.docx or .dox) - Required',
+                    'wallet_id': 'Wallet ID (optional, defaults to client address)'
+                },
+                'response': {
+                    'conversions': 'Converted amounts',
+                    'wallet_transactions': 'Transaction records',
+                    'sent_to_wallet': 'Boolean confirmation'
+                }
             }
         },
         'supported_formats': ['.docx', '.dox'],
@@ -197,6 +211,17 @@ def api_docs_html():
                     • to_currency: Target currency (optional, default: USD)
                 </div>
                 <div class="example">curl -X POST -H "Content-Type: application/json" -d '{{"amount": 1.5, "from_currency": "BTC", "to_currency": "USD"}}' http://localhost:5001/api/convert-single</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">POST</span><span class="path">/api/send-to-wallet</span>
+                <div class="description">Convert balances and send to client wallet</div>
+                <div class="params">
+                    <strong>Parameters:</strong><br>
+                    • file: Balance file (.docx or .dox) - Required<br>
+                    • wallet_id: Wallet ID (optional, defaults to client address)
+                </div>
+                <div class="example">curl -X POST -F "file=@balances.docx" http://localhost:5001/api/send-to-wallet</div>
             </div>
             
             <div class="endpoint">
@@ -339,6 +364,55 @@ def convert_single_amount():
     except Exception as e:
         logger.error(f"Single conversion error: {str(e)}")
         return jsonify({'error': f'Conversion failed: {str(e)}'}), 500
+
+
+@app.route('/api/send-to-wallet', methods=['POST'])
+def send_to_wallet():
+    """
+    Convert balances and send to client wallet
+    
+    Request:
+        - file: Balance file (.docx or .dox)
+        - wallet_id: Wallet ID (optional, defaults to client address)
+    
+    Response:
+        - conversions: Converted amounts
+        - wallet_transactions: Transaction records
+        - sent_to_wallet: Boolean confirmation
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        
+        if file.filename == '' or not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file'}), 400
+        
+        # Save file
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        
+        file.save(filepath)
+        logger.info(f"File uploaded for wallet sending: {unique_filename}")
+        
+        # Get wallet ID from request
+        wallet_id = request.form.get('wallet_id')
+        
+        # Convert and send to wallet
+        result = crypto_converter.send_converted_amounts_to_wallet(filepath, wallet_id)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        logger.info(f"Successfully sent converted amounts to wallet")
+        return jsonify(result), 200
+    
+    except Exception as e:
+        logger.error(f"Wallet send error: {str(e)}")
+        return jsonify({'error': f'Wallet send failed: {str(e)}'}), 500
 
 
 @app.errorhandler(413)
