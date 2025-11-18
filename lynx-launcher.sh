@@ -43,6 +43,7 @@ if curl -s http://localhost:5001/health > /dev/null; then
     echo "  demo     - Run demonstration"
     echo "  parse    - Parse balance file"
     echo "  convert  - Convert to cryptocurrency"
+    echo "  send     - Send cryptocurrency"
     echo "  api      - Open API documentation"
     echo "  stop     - Stop background server"
     echo "  help     - Show detailed help"
@@ -69,6 +70,15 @@ if curl -s http://localhost:5001/health > /dev/null; then
                 if [ -f "$filepath" ]; then
                     echo "Converting balances to cryptocurrency..."
                     curl -X POST -F "file=@$filepath" http://localhost:5001/api/convert | python -m json.tool
+                else
+                    echo "❌ File not found: $filepath"
+                fi
+                ;;
+            "send")
+                read -p "Enter file path: " filepath
+                if [ -f "$filepath" ]; then
+                    echo "Converting and sending to wallet..."
+                    curl -X POST -F "file=@$filepath" http://localhost:5001/api/send-to-wallet | python -m json.tool
                 else
                     echo "❌ File not found: $filepath"
                 fi
