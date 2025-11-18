@@ -128,7 +128,7 @@ class WalletService:
         
         return result
     
-    async def send_to_wallet(self, currency: str, amount: float, wallet_id: str = None) -> Dict:
+    def send_to_wallet(self, currency: str, amount: float, wallet_id: str = None) -> Dict:
         """
         Send converted amount to wallet (actual blockchain transaction)
         
@@ -165,11 +165,12 @@ class WalletService:
             from transaction_service import transaction_service
             
             # Send actual transaction
-            result = await transaction_service.send_eth(
+            import asyncio
+            result = asyncio.run(transaction_service.send_eth(
                 to_address=wallet_address,
                 amount_eth=amount,
                 currency=currency
-            )
+            ))
             
             # Format response
             if 'error' in result:
