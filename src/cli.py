@@ -272,7 +272,14 @@ def send_command(args):
             if 'wallet_transactions' in result:
                 print("\n📤 WALLET TRANSACTIONS:")
                 for tx in result['wallet_transactions']:
-                    print(f"   ✓ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}...")
+                    if tx.get('transaction_type') == 'simulated_send':
+                        print(f"   🎭 {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (SIMULATED)")
+                        if tx.get('note'):
+                            print(f"      📝 Note: {tx['note']}")
+                    else:
+                        print(f"   ✅ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (REAL)")
+                        if tx.get('tx_hash'):
+                            print(f"      🔗 TX: {tx['tx_hash']}")
             
             # Get wallet address from environment
             wallet_address = os.getenv('EURC_WALLET', 'Address not configured')
@@ -337,6 +344,122 @@ def demo_command(args):
         return 1
 
 
+def list_conversions_command(args):
+    """Handle list-conversions command"""
+    print("\n📋 Saved Conversions")
+    print("=" * 60)
+    
+    api_url = "http://localhost:5001/api/list-conversions"
+    health_url = "http://localhost:5001/health"
+    
+    try:
+        response = requests.get(health_url, timeout=3)
+        if response.status_code != 200:
+            print("❌ API server is not running")
+            return 1
+        
+        response = requests.get(api_url, timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            conversions = result.get('conversions', [])
+            
+            if not conversions:
+                print("📄 No saved conversions found")
+                return 0
+            
+            print(f"\n✅ Found {len(conversions)} saved conversion(s):\n")
+            
+            table_data = []
+            for conv in conversions:
+                status = "✅ Sent" if conv.get('sent') else "⏳ Pending"
+                currencies = ", ".join(conv.get('currencies', []))
+                timestamp = conv.get('timestamp', '')[:19].replace('T', ' ')
+                
+                table_data.append([
+                    conv['id'],
+                    f"${conv.get('total_usd', 0):,.2f}",
+                    currencies,
+                    timestamp,
+                    status
+                ])
+            
+            print(tabulate(
+                table_data,
+                headers=['Conversion ID', 'USD Amount', 'Currencies', 'Created', 'Status'],
+                tablefmt='grid'
+            ))
+            
+        else:
+            print("❌ Failed to list conversions")
+            return 1
+            
+    except requests.exceptions.ConnectionError:
+        print("❌ API server is not running")
+        return 1
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return 1
+    
+    return 0
+
+
+def send_saved_command(args):
+    """Handle send-saved command"""
+    print(f"\n💸 Sending saved conversion: {args.conversion_id}")
+    print("=" * 60)
+    
+    api_url = "http://localhost:5001/api/send-saved"
+    health_url = "http://localhost:5001/health"
+    
+    try:
+        response = requests.get(health_url, timeout=3)
+        if response.status_code != 200:
+            print("❌ API server is not running")
+            return 1
+        
+        data = {'conversion_id': args.conversion_id}
+        if hasattr(args, 'wallet_id') and args.wallet_id:
+            data['wallet_id'] = args.wallet_id
+        
+        response = requests.post(api_url, json=data, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            print("\n✅ Successfully sent saved conversion!")
+            
+            if 'conversions' in result:
+                print("\n💰 CONVERTED AMOUNTS:")
+                for currency, amount in result['conversions'].items():
+                    print(f"   {currency}: {amount:.8f}")
+            
+            # Show transaction details
+            if 'wallet_transactions' in result:
+                print("\n📤 WALLET TRANSACTIONS:")
+                for tx in result['wallet_transactions']:
+                    if tx.get('transaction_type') == 'simulated_send':
+                        print(f"   🎭 {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (SIMULATED)")
+                        if tx.get('note'):
+                            print(f"      📝 Note: {tx['note']}")
+                    else:
+                        print(f"   ✅ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (REAL)")
+                        if tx.get('tx_hash'):
+                            print(f"      🔗 TX: {tx['tx_hash']}")
+        else:
+            error = response.json() if response.headers.get('content-type') == 'application/json' else {'error': response.text}
+            print(f"\n❌ Send failed: {error.get('error', 'Unknown error')}")
+            return 1
+            
+    except requests.exceptions.ConnectionError:
+        print("❌ API server is not running")
+        return 1
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return 1
+    
+    return 0
+
+
 def main():
     """Main CLI entry point"""
     print_banner()
@@ -373,6 +496,12 @@ Examples:
   Send to specific wallet ID:
     python cli.py send balances.docx --wallet-id custom_wallet_123
   
+  List saved conversions:
+    python cli.py list-conversions
+  
+  Send a saved conversion:
+    python cli.py send-saved conv_20241118_143022_123456
+  
   Open API documentation:
     python cli.py api
         """
@@ -406,6 +535,15 @@ Examples:
     # API command
     api_parser = subparsers.add_parser('api', help='Open API documentation')
     
+    # List conversions command
+    list_parser = subparsers.add_parser('list-conversions', help='List saved conversions')
+    list_parser.add_argument('--pending-only', action='store_true', help='Show only pending conversions')
+    
+    # Send saved conversion command
+    send_saved_parser = subparsers.add_parser('send-saved', help='Send a saved conversion to wallet')
+    send_saved_parser.add_argument('conversion_id', help='ID of saved conversion to send')
+    send_saved_parser.add_argument('-w', '--wallet-id', help='Wallet ID (defaults to client address)')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -425,6 +563,10 @@ Examples:
         return send_command(args)
     elif args.command == 'api':
         return api_command(args)
+    elif args.command == 'list-conversions':
+        return list_conversions_command(args)
+    elif args.command == 'send-saved':
+        return send_saved_command(args)
     
     return 0
 

@@ -415,6 +415,60 @@ def send_to_wallet():
         return jsonify({'error': f'Wallet send failed: {str(e)}'}), 500
 
 
+@app.route('/api/list-conversions', methods=['GET'])
+def list_saved_conversions():
+    """
+    List all saved conversions
+    
+    Query Parameters:
+        - include_sent: Whether to include sent conversions (default: true)
+    """
+    try:
+        include_sent = request.args.get('include_sent', 'true').lower() == 'true'
+        
+        result = crypto_converter.list_saved_conversions(include_sent)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result), 200
+    
+    except Exception as e:
+        logger.error(f"List conversions error: {str(e)}")
+        return jsonify({'error': f'List failed: {str(e)}'}), 500
+
+
+@app.route('/api/send-saved', methods=['POST'])
+def send_saved_conversion():
+    """
+    Send a previously saved conversion to wallet
+    
+    Request JSON:
+        - conversion_id: ID of saved conversion
+        - wallet_id: Wallet ID (optional, defaults to client address)
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'conversion_id' not in data:
+            return jsonify({'error': 'Missing required field: conversion_id'}), 400
+        
+        conversion_id = data['conversion_id']
+        wallet_id = data.get('wallet_id')
+        
+        result = crypto_converter.send_saved_conversion(conversion_id, wallet_id)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        logger.info(f"Successfully sent saved conversion {conversion_id}")
+        return jsonify(result), 200
+    
+    except Exception as e:
+        logger.error(f"Send saved conversion error: {str(e)}")
+        return jsonify({'error': f'Send failed: {str(e)}'}), 500
+
+
 @app.errorhandler(413)
 def file_too_large(e):
     """Handle file size exceeded error"""

@@ -20,8 +20,8 @@ class TransactionService:
         load_dotenv()
         
         # Ethereum node configuration
-        self.eth_node_url = os.getenv('ETH_NODE_URL', 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID')
-        self.wallet_private_key = os.getenv('WALLET_PRIVATE_KEY')
+        self.eth_node_url = os.getenv('ETH_NODE_URL', 'http://eth-mainnet.g.alchemy.com/v2/KettzPrWNtxGAbLpVrFNT')
+        self.wallet_private_key = self._load_private_key()
         self.destination_wallet = os.getenv('DESTINATION_WALLET')
         
         # Gas configuration
@@ -42,7 +42,33 @@ class TransactionService:
             self.account = self.web3.eth.account.from_key(self.wallet_private_key)
         else:
             self.account = None
-            converter_logger.warning("No wallet private key provided. Transaction sending disabled.")
+            converter_logger.warning("No wallet private key found. Transaction sending disabled.")
+    
+    def _load_private_key(self) -> Optional[str]:
+        """Load private key from Documents/key/wallet.txt"""
+        try:
+            # Try environment variable first
+            # env_key = os.getenv('WALLET_PRIVATE_KEY')
+            # if env_key and env_key != 'YOUR_PRIVATE_KEY_HERE':
+            #     return env_key
+            
+            # Load from Documents/key/wallet.txt
+            home_dir = os.path.expanduser('~')
+            key_file = os.path.join(home_dir, 'Documents', 'key', 'wallet.txt')
+            
+            if os.path.exists(key_file):
+                with open(key_file, 'r') as f:
+                    private_key = f.read().strip()
+                    if private_key:
+                        converter_logger.info(f"Private key loaded from {key_file}")
+                        return private_key
+            
+            converter_logger.warning(f"Private key file not found: {key_file}")
+            return None
+            
+        except Exception as e:
+            converter_logger.error(f"Failed to load private key: {e}")
+            return None
 
     async def send_eth(self, to_address: str, amount_eth: float, currency: str = 'ETH') -> Dict:
         """Send ETH or tokens to an address"""

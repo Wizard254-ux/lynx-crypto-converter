@@ -8,6 +8,7 @@ from datetime import datetime
 from parser import BalanceParser
 from rate_service import rate_service
 from wallet_service import wallet_service
+from conversion_storage import conversion_storage
 from logger import converter_logger
 
 
@@ -74,6 +75,7 @@ class CryptoConverter:
 
             result = {
                 'success': True,
+                'source_file': file_path,
                 'parsed_balances': balance_list,
                 'total_usd_amount': total_usd,
                 'rates': rates_output,
@@ -84,6 +86,10 @@ class CryptoConverter:
 
             if send_to_wallet:
                 result['wallet_transactions'] = wallet_transactions
+
+            # Save conversion for later use
+            conversion_id = conversion_storage.save_conversion(result)
+            result['conversion_id'] = conversion_id
 
             return result
 
@@ -189,6 +195,78 @@ class CryptoConverter:
         
         converter_logger.info(f"Sent {len(wallet_transactions)} converted amounts to wallet")
         return result
+    
+    def send_saved_conversion(self, conversion_id: str, wallet_id: str = None) -> Dict:
+        """
+        Send a previously saved conversion to wallet
+        
+        Args:
+            conversion_id: ID of saved conversion
+            wallet_id: Wallet ID (defaults to client address)
+            
+        Returns:
+            Dict with transaction results
+        """
+        try:
+            # Get saved conversion
+            conversion = conversion_storage.get_conversion(conversion_id)
+            
+            if not conversion:
+                return {'error': f'Conversion {conversion_id} not found'}
+            
+            if conversion.get('sent', False):
+                return {'error': f'Conversion {conversion_id} already sent'}
+            
+            # Send each converted amount to wallet
+            wallet_transactions = []
+            for currency, amount in conversion['conversions'].items():
+                transaction = wallet_service.send_to_wallet(currency, amount, wallet_id)
+                wallet_transactions.append(transaction)
+            
+            # Mark as sent
+            conversion_storage.mark_as_sent(conversion_id)
+            
+            result = {
+                'success': True,
+                'conversion_id': conversion_id,
+                'conversions': conversion['conversions'],
+                'wallet_transactions': wallet_transactions,
+                'sent_to_wallet': True,
+                'original_file': conversion.get('source_file', 'unknown'),
+                'total_usd_amount': conversion.get('total_usd_amount', 0),
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            converter_logger.info(f"Sent saved conversion {conversion_id} to wallet")
+            return result
+            
+        except Exception as e:
+            converter_logger.error(f"Failed to send saved conversion: {e}")
+            return {'error': f'Send failed: {str(e)}'}
+    
+    def list_saved_conversions(self, include_sent: bool = True) -> Dict:
+        """
+        List all saved conversions
+        
+        Args:
+            include_sent: Whether to include already sent conversions
+            
+        Returns:
+            Dict with conversion list
+        """
+        try:
+            conversions = conversion_storage.list_conversions(include_sent)
+            
+            return {
+                'success': True,
+                'conversions': conversions,
+                'total_count': len(conversions),
+                'timestamp': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            converter_logger.error(f"Failed to list conversions: {e}")
+            return {'error': f'List failed: {str(e)}'}
 
 
 # Global converter instance

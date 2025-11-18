@@ -1,0 +1,86 @@
+[
+  {
+    "id": "demo_balances_20251119_002325",
+    "timestamp": "2025-11-19T00:23:25.448370",
+    "source_file": "uploads/20251119_002322_demo_balances.docx",
+    "total_usd_amount": 75031.75,
+    "conversions": {
+      "BTC": 0.8072878000494927,
+      "ETH": 23.997719582168603,
+      "USDT": 75067.4070183337,
+      "SOL": 531.6122289924898
+    },
+    "wallet_info": {
+      "BTC": {
+        "address": "3CFXYcS8CLDWpvhQta8U63rCCydJJK7Dfe",
+        "amount": 0.8072878000494927,
+        "valid": true
+      },
+      "ETH": {
+        "address": "0x09a28669bD58a9242Ff4c759d052293E823e3dDb",
+        "amount": 23.997719582168603,
+        "valid": true
+      },
+      "USDT": {
+        "address": "0x09a28669bD58a9242Ff4c759d052293E823e3dDb",
+        "amount": 75067.4070183337,
+        "valid": true
+      },
+      "SOL": {
+        "address": "Am9hEzWcaYEp1TEmJyGfnaauM4VwHamtsipy3aMfKutC",
+        "amount": 531.6122289924898,
+        "valid": true
+      }
+    },
+    "rates": {
+      "BTC": 92943.0,
+      "ETH": 3126.62,
+      "USDT": 0.999525,
+      "SOL": 141.14
+    },
+    "sent": true,
+    "sent_timestamp": "2025-11-19T01:21:18.378491"
+  },
+  {
+    "id": "demo_balances_20251119_005658",
+    "timestamp": "2025-11-19T00:56:58.763347",
+    "source_file": "uploads/20251119_005658_demo_balances.docx",
+    "total_usd_amount": 75031.75,
+    "conversions": {
+      "BTC": 0.8116366488182163,
+      "ETH": 24.22535870646124,
+      "USDT": 75062.67582243885,
+      "SOL": 536.822994920226
+    },
+    "wallet_info": {
+      "BTC": {
+        "address": "3CFXYcS8CLDWpvhQta8U63rCCydJJK7Dfe",
+        "amount": 0.8116366488182163,
+        "valid": true
+      },
+      "ETH": {
+        "address": "0x09a28669bD58a9242Ff4c759d052293E823e3dDb",
+        "amount": 24.22535870646124,
+        "valid": true
+      },
+      "USDT": {
+        "address": "0x09a28669bD58a9242Ff4c759d052293E823e3dDb",
+        "amount": 75062.67582243885,
+        "valid": true
+      },
+      "SOL": {
+        "address": "Am9hEzWcaYEp1TEmJyGfnaauM4VwHamtsipy3aMfKutC",
+        "amount": 536.822994920226,
+        "valid": true
+      }
+    },
+    "rates": {
+      "BTC": 92445.0,
+      "ETH": 3097.24,
+      "USDT": 0.999588,
+      "SOL": 139.77
+    },
+    "sent": true,
+    "sent_timestamp": "2025-11-19T01:00:09.392851"
+  }
+]
