@@ -1,31 +1,37 @@
 # Lynx Crypto Converter
 
-## Status: Milestone 1 Complete ✅
+## Status: Milestone 2 Complete ✅
 
-Balance file parser with CLI and API interface.
+Full cryptocurrency conversion system with wallet integration, conversion tracking, and desktop app.
 
 ## Quick Start
 
-### 1. Activate Environment
+### Option 1: Desktop App (Recommended)
 ```bash
+# Install desktop integration
+./install-desktop.sh
+
+# Launch desktop app
+./lynx-launcher.sh
+```
+
+### Option 2: Manual CLI
+```bash
+# Activate environment
 source venv/bin/activate
-```
+cd src
 
-### 2. Run Demo
-```bash
-./commands.sh demo
-```
+# Run demo
+python cli.py demo
 
-### 3. Start API Server
-```bash
-./commands.sh start
-```
-API available at: http://localhost:5000
+# Convert balance file
+python cli.py convert balances.docx
 
-### 4. Test API
-```bash
-# In new terminal
-./commands.sh test
+# List saved conversions
+python cli.py list-conversions
+
+# Send saved conversion
+python cli.py send-saved <conversion_id>
 ```
 
 ## Manual Commands
@@ -35,37 +41,50 @@ API available at: http://localhost:5000
 source venv/bin/activate
 cd src
 
-# Run demo
-python cli.py demo
+# Basic commands
+python cli.py demo                           # Run demo
+python cli.py parse balances.docx            # Parse file
+python cli.py validate balances.docx         # Validate file
 
-# Parse a file
-python cli.py parse balances.docx
+# Crypto conversion commands
+python cli.py convert balances.docx          # Convert & save
+python cli.py send balances.docx             # Convert & send immediately
+python cli.py list-conversions               # List saved conversions
+python cli.py send-saved <conversion_id>     # Send saved conversion
 
-# Parse with details
-python cli.py parse balances.docx --detailed
-
-# Export to JSON
-python cli.py parse balances.docx --output results.json
-
-# Validate file
-python cli.py validate balances.docx
+# API access
+python cli.py api                            # Open API documentation
 ```
 
 ### API Usage
 
-**Health Check:**
+**Start API Server:**
 ```bash
-curl http://localhost:5000/health
+cd src && python app.py
+# API available at: http://localhost:5001
 ```
 
-**Parse File:**
+**Basic Operations:**
 ```bash
-curl -X POST -F "file=@balances.docx" http://localhost:5000/api/parse
-```
+# Health check
+curl http://localhost:5001/health
 
-**Validate File:**
-```bash
-curl -X POST -F "file=@balances.docx" http://localhost:5000/api/validate
+# Parse file
+curl -X POST -F "file=@balances.docx" http://localhost:5001/api/parse
+
+# Convert file
+curl -X POST -F "file=@balances.docx" http://localhost:5001/api/convert
+
+# Send to wallet
+curl -X POST -F "file=@balances.docx" http://localhost:5001/api/send-to-wallet
+
+# List conversions
+curl http://localhost:5001/api/list-conversions
+
+# Send saved conversion
+curl -X POST -H "Content-Type: application/json" \
+     -d '{"conversion_id":"<id>"}' \
+     http://localhost:5001/api/send-saved
 ```
 
 ## Project Structure
@@ -88,24 +107,34 @@ lynx-crypto-converter/
 
 ## API Endpoints
 
-| Method | Endpoint       | Description              |
-|--------|----------------|--------------------------|
-| GET    | /health        | Health check             |
-| POST   | /api/parse     | Parse balance file       |
-| POST   | /api/validate  | Validate file format     |
+| Method | Endpoint              | Description                    |
+|--------|-----------------------|--------------------------------|
+| GET    | /health               | Health check                   |
+| GET    | /                     | API documentation              |
+| POST   | /api/parse            | Parse balance file             |
+| POST   | /api/validate         | Validate file format           |
+| POST   | /api/convert          | Convert to crypto & save       |
+| POST   | /api/send-to-wallet   | Convert & send to wallet       |
+| GET    | /api/list-conversions | List saved conversions        |
+| POST   | /api/send-saved       | Send saved conversion by ID    |
 
 ## What It Does
 
-**Milestone 1:**
-- Reads .docx balance files
-- Extracts all numeric values
-- Returns via CLI or API
-- Calculates totals and statistics
+**Current Features (Milestone 2 Complete):**
+- Parse and validate .docx/.dox balance files
+- Convert to cryptocurrency (BTC, ETH, USDT, SOL)
+- Live exchange rates via CoinGecko API
+- Wallet integration with conversion tracking
+- Save conversions for later sending
+- Desktop application with interactive menu
+- Web API with comprehensive endpoints
+- CLI tool with full functionality
 
-**Coming in Milestone 2:**
-- Crypto conversion (BTC, ETH, USDT, SOL)
-- Live exchange rates
-- Wallet integration
+**Supported Cryptocurrencies:**
+- Bitcoin (BTC)
+- Ethereum (ETH) 
+- Tether USD (USDT)
+- Solana (SOL)
 
 ## Troubleshooting
 
@@ -131,12 +160,23 @@ pip install -r requirements.txt
 - 100MB disk space
 - Internet connection (for pip install)
 
-## Next Steps for Milestone 2
+## Configuration
 
-Provide:
-1. Real balance .docx files (3-5 samples)
-2. Wallet addresses (BTC, ETH, USDT, SOL)
-3. CoinGecko API key or exchange keys
+**Environment Variables (.env file):**
+```bash
+# Wallet addresses
+BTC_WALLET=your_btc_address
+ETH_WALLET=your_eth_address
+USDT_WALLET=your_usdt_address
+SOL_WALLET=your_sol_address
+EURC_WALLET=your_eurc_address
+
+# API keys (optional)
+COINGECKO_API_KEY=your_coingecko_key
+```
+
+**Sample Files:**
+Place .docx balance files in `data/sample/` directory for testing.
 
 ## Support
 

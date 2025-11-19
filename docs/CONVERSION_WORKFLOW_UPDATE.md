@@ -69,6 +69,7 @@ python cli.py send-saved balance_file_20241201_143022 --wallet-id custom_wallet
 
 ## Client Workflow Example
 
+### CLI Workflow
 1. **Bank sends balance.docx file**
 2. **Parse & Convert:**
    ```bash
@@ -86,6 +87,12 @@ python cli.py send-saved balance_file_20241201_143022 --wallet-id custom_wallet
    python cli.py send-saved balance_nov_18_20241201_143022
    ```
 
+### Desktop App Workflow
+1. **Launch desktop app:** `./lynx-launcher.sh`
+2. **Convert file:** Type `convert` → Enter file path
+3. **List conversions:** Type `list`
+4. **Send conversion:** Type `send` → Choose option 2 → Enter conversion ID
+
 ## Benefits
 
 ✅ **Separation of Concerns:** Parse/convert vs send are now separate operations  
@@ -100,6 +107,45 @@ python cli.py send-saved balance_file_20241201_143022 --wallet-id custom_wallet
 - `src/converter.py` - Updated to auto-save conversions
 - `src/cli.py` - New commands: `list-conversions`, `send-saved`
 - `src/app.py` - New API endpoints
+- `lynx-launcher.sh` - Desktop app launcher with interactive menu
+- `install-desktop.sh` - Desktop integration installer
+
+## Available Interfaces
+
+### 1. Command Line Interface (CLI)
+```bash
+# All CLI commands
+python cli.py demo                    # Run demo
+python cli.py parse file.docx         # Parse file
+python cli.py validate file.docx      # Validate file
+python cli.py convert file.docx       # Convert & save
+python cli.py send file.docx          # Convert & send immediately
+python cli.py list-conversions        # List saved conversions
+python cli.py send-saved <id>         # Send saved conversion
+python cli.py api                     # Open API docs
+```
+
+### 2. Desktop Application
+```bash
+# Install desktop integration
+./install-desktop.sh
+
+# Launch desktop app
+./lynx-launcher.sh
+```
+**Desktop Features:**
+- Interactive menu with all CLI commands
+- File path prompts and validation
+- Two-option send command (file or conversion ID)
+- API server auto-start and management
+
+### 3. Web API
+```bash
+# Start API server
+python src/app.py
+
+# Available at http://localhost:5001
+```
 
 ## Backward Compatibility
 

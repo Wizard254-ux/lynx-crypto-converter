@@ -95,17 +95,42 @@ if curl -s http://localhost:5001/health > /dev/null; then
                 fi
                 ;;
             "send")
-                read -p "Enter file path: " filepath
-                if [ -f "$filepath" ]; then
-                    read -p "Wallet ID (optional): " wallet_id
-                    if [ -n "$wallet_id" ]; then
-                        python cli.py send "$filepath" --wallet-id "$wallet_id"
-                    else
-                        python cli.py send "$filepath"
-                    fi
-                else
-                    echo "❌ File not found: $filepath"
-                fi
+                echo "Send options:"
+                echo "  1. Send file (convert and send)"
+                echo "  2. Send by conversion ID"
+                read -p "Choose option (1/2): " send_option
+                
+                case $send_option in
+                    "1")
+                        read -p "Enter file path: " filepath
+                        if [ -f "$filepath" ]; then
+                            read -p "Wallet ID (optional): " wallet_id
+                            if [ -n "$wallet_id" ]; then
+                                python cli.py send "$filepath" --wallet-id "$wallet_id"
+                            else
+                                python cli.py send "$filepath"
+                            fi
+                        else
+                            echo "❌ File not found: $filepath"
+                        fi
+                        ;;
+                    "2")
+                        read -p "Enter conversion ID: " conversion_id
+                        if [ -n "$conversion_id" ]; then
+                            read -p "Wallet ID (optional): " wallet_id
+                            if [ -n "$wallet_id" ]; then
+                                python cli.py send-saved "$conversion_id" --wallet-id "$wallet_id"
+                            else
+                                python cli.py send-saved "$conversion_id"
+                            fi
+                        else
+                            echo "❌ Conversion ID required"
+                        fi
+                        ;;
+                    *)
+                        echo "❌ Invalid option"
+                        ;;
+                esac
                 ;;
             "list")
                 echo "📋 Listing saved conversions..."
