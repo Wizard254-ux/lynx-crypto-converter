@@ -2,7 +2,7 @@
 Version=1.0
 Type=Application
 Name=Lynx Crypto Converter
-Comment=Cryptocurrency balance converter with live rates
+Comment=Parse balance files, convert to crypto (BTC/ETH/USDT/SOL), send to wallets with conversion tracking
 Exec=%PROJECT_DIR%/lynx-launcher.sh
 Icon=%PROJECT_DIR%/assets/lynx-icon.png
 Terminal=true

@@ -44,3 +44,4 @@ data/sample/*
 # Demo files
 demo_balances.docx
 test_balances.docx
+conversions.json

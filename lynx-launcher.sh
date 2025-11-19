@@ -40,13 +40,16 @@ if curl -s http://localhost:5001/health > /dev/null; then
     echo "╚══════════════════════════════════════════════════════╝"
     echo ""
     echo "Available commands:"
-    echo "  demo     - Run demonstration"
-    echo "  parse    - Parse balance file"
-    echo "  convert  - Convert to cryptocurrency"
-    echo "  send     - Send cryptocurrency"
-    echo "  api      - Open API documentation"
-    echo "  stop     - Stop background server"
-    echo "  help     - Show detailed help"
+    echo "  demo         - Run demonstration with sample data"
+    echo "  parse        - Parse balance file (.docx/.dox)"
+    echo "  validate     - Validate balance file format"
+    echo "  convert      - Convert to cryptocurrency (BTC, ETH, USDT, SOL)"
+    echo "  send         - Convert and send to wallet"
+    echo "  list         - List saved conversions"
+    echo "  send-saved   - Send saved conversion by ID"
+    echo "  api          - Open API documentation"
+    echo "  stop         - Stop background server"
+    echo "  help         - Show detailed CLI help"
     echo ""
     
     # Interactive menu
@@ -60,7 +63,20 @@ if curl -s http://localhost:5001/health > /dev/null; then
             "parse")
                 read -p "Enter file path: " filepath
                 if [ -f "$filepath" ]; then
-                    python cli.py parse "$filepath" --detailed
+                    read -p "Show detailed output? (y/N): " detailed
+                    if [[ $detailed =~ ^[Yy]$ ]]; then
+                        python cli.py parse "$filepath" --detailed
+                    else
+                        python cli.py parse "$filepath"
+                    fi
+                else
+                    echo "❌ File not found: $filepath"
+                fi
+                ;;
+            "validate")
+                read -p "Enter file path: " filepath
+                if [ -f "$filepath" ]; then
+                    python cli.py validate "$filepath"
                 else
                     echo "❌ File not found: $filepath"
                 fi
@@ -68,8 +84,12 @@ if curl -s http://localhost:5001/health > /dev/null; then
             "convert")
                 read -p "Enter file path: " filepath
                 if [ -f "$filepath" ]; then
-                    echo "Converting balances to cryptocurrency..."
-                    curl -X POST -F "file=@$filepath" http://localhost:5001/api/convert | python -m json.tool
+                    read -p "Target currency (default: USD): " currency
+                    if [ -n "$currency" ]; then
+                        python cli.py convert "$filepath" --currency "$currency"
+                    else
+                        python cli.py convert "$filepath"
+                    fi
                 else
                     echo "❌ File not found: $filepath"
                 fi
@@ -77,10 +97,27 @@ if curl -s http://localhost:5001/health > /dev/null; then
             "send")
                 read -p "Enter file path: " filepath
                 if [ -f "$filepath" ]; then
-                    echo "Converting and sending to wallet..."
-                    curl -X POST -F "file=@$filepath" http://localhost:5001/api/send-to-wallet | python -m json.tool
+                    read -p "Wallet ID (optional): " wallet_id
+                    if [ -n "$wallet_id" ]; then
+                        python cli.py send "$filepath" --wallet-id "$wallet_id"
+                    else
+                        python cli.py send "$filepath"
+                    fi
                 else
                     echo "❌ File not found: $filepath"
+                fi
+                ;;
+            "list")
+                echo "📋 Listing saved conversions..."
+                python cli.py list-conversions
+                ;;
+            "send-saved")
+                read -p "Enter conversion ID: " conversion_id
+                if [ -n "$conversion_id" ]; then
+                    echo "💸 Sending saved conversion..."
+                    python cli.py send-saved "$conversion_id"
+                else
+                    echo "❌ Conversion ID required"
                 fi
                 ;;
             "api")
