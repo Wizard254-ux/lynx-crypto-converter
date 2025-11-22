@@ -221,10 +221,28 @@ def api_command(args):
     return 0
 
 
+def setup_private_key():
+    """Ensure private key is available"""
+    home_dir = os.path.expanduser('~')
+    key_dir = os.path.join(home_dir, 'Documents', 'key')
+    key_file = os.path.join(key_dir, 'wallet.txt')
+    
+    if not os.path.exists(key_file):
+        print("\n🔑 Private key not found. Please set up your wallet private key.")
+        print(f"📁 Expected location: {key_file}")
+        print("💡 Create the directory and file manually, or use the desktop installer.")
+        return False
+    return True
+
+
 def send_command(args):
     """Handle send command"""
     # Load environment variables
     load_dotenv()
+    
+    # Check private key setup
+    if not setup_private_key():
+        return 1
     
     print(f"\n💸 Converting and sending to wallet: {args.file}")
     print("=" * 60)

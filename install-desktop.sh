@@ -10,6 +10,30 @@ LAUNCHER_SCRIPT="lynx-launcher.sh"
 echo "🖥️  Installing Lynx Crypto Converter Desktop Integration..."
 echo "=================================================="
 
+# Setup private key directory
+KEY_DIR="$HOME/Documents/key"
+KEY_FILE="$KEY_DIR/wallet.txt"
+
+echo "🔑 Setting up wallet private key..."
+mkdir -p "$KEY_DIR"
+
+if [ ! -f "$KEY_FILE" ]; then
+    echo "📁 Private key file not found at: $KEY_FILE"
+    echo "💡 Please add your Ethereum private key to this file manually."
+    echo "⚠️  Keep this file secure and never share it!"
+    
+    # Create placeholder file
+    echo "# Add your Ethereum private key here (without 0x prefix)" > "$KEY_FILE"
+    echo "# Example: abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234" >> "$KEY_FILE"
+    chmod 600 "$KEY_FILE"  # Secure permissions
+    
+    echo "✅ Created secure key file template: $KEY_FILE"
+    echo "📝 Edit this file and add your private key before using send functionality"
+else
+    echo "✅ Private key file already exists: $KEY_FILE"
+    chmod 600 "$KEY_FILE"  # Ensure secure permissions
+fi
+
 # Check if we're in the right directory
 if [ ! -f "$DESKTOP_FILE" ]; then
     echo "❌ Desktop file not found. Please run from project directory."
@@ -82,8 +106,14 @@ echo "  • API server with web interface and documentation"
 echo "  • Demo mode with sample data"
 echo "  • CLI and desktop launcher interfaces"
 echo ""
+echo "🔑 Private Key Setup:"
+echo "  • Edit: $KEY_FILE"
+echo "  • Add your Ethereum private key (without 0x prefix)"
+echo "  • Required for send functionality"
+echo ""
 echo "To uninstall:"
 echo "  rm $DESKTOP_DIR/$DESKTOP_FILE"
+echo "  rm -rf $KEY_DIR  # (removes private key - be careful!)"
 echo ""
 
 # Test if desktop file is valid
