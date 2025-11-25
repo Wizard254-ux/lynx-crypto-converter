@@ -166,20 +166,16 @@ class WalletService:
             
             # Check if we have a private key
             if not transaction_service.wallet_private_key:
-                converter_logger.warning(f"No private key available - simulating {currency} transaction")
                 return {
-                    'success': True,
+                    'success': False,
+                    'error': 'No private key available for transactions',
                     'currency': currency,
                     'amount': amount,
                     'wallet_address': wallet_address,
-                    'transaction_type': 'simulated_send',
-                    'status': 'simulated',
-                    'tx_hash': f'sim_{currency.lower()}_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
-                    'timestamp': datetime.now().isoformat(),
-                    'note': 'Transaction simulated - no private key provided'
+                    'timestamp': datetime.now().isoformat()
                 }
             
-            # Send actual transaction
+            # Send actual transaction (send_eth handles both ETH and tokens internally)
             import asyncio
             result = asyncio.run(transaction_service.send_eth(
                 to_address=wallet_address,
@@ -200,6 +196,7 @@ class WalletService:
                 }
             else:
                 converter_logger.info(f"Sent {amount:.8f} {currency} to {wallet_address}. TX: {result.get('tx_hash')}")
+                converter_logger.info(f"Transaction type: {'Token transfer' if currency.upper() in ['USDT', 'USDC'] else 'ETH transfer'}")
                 return {
                     'success': True,
                     'currency': currency,
@@ -213,18 +210,13 @@ class WalletService:
                 
         except Exception as e:
             converter_logger.error(f"Error sending {currency}: {e}")
-            # Fallback to simulation if transaction service fails
-            converter_logger.warning(f"Transaction service failed - simulating {currency} transaction")
             return {
-                'success': True,
+                'success': False,
+                'error': f'Transaction failed: {str(e)}',
                 'currency': currency,
                 'amount': amount,
                 'wallet_address': wallet_address,
-                'transaction_type': 'simulated_send',
-                'status': 'simulated',
-                'tx_hash': f'sim_{currency.lower()}_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
-                'timestamp': datetime.now().isoformat(),
-                'note': f'Transaction simulated due to error: {str(e)}'
+                'timestamp': datetime.now().isoformat()
             }
     
 
