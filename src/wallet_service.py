@@ -164,18 +164,39 @@ class WalletService:
             # Import transaction service
             from transaction_service import transaction_service
             
-            # Check if we have a private key
+            # Check if we have a private key and valid account
             if not transaction_service.wallet_private_key:
                 return {
                     'success': False,
-                    'error': 'No private key available for transactions',
+                    'error': 'Private key not configured. Run ./setup-wallet.sh to configure your wallet.',
                     'currency': currency,
                     'amount': amount,
                     'wallet_address': wallet_address,
                     'timestamp': datetime.now().isoformat()
                 }
             
-            # Send actual transaction (send_eth handles both ETH and tokens internally)
+            if not transaction_service.account:
+                return {
+                    'success': False,
+                    'error': 'Invalid private key. Check your wallet.txt file or run ./check-wallet.py for diagnosis.',
+                    'currency': currency,
+                    'amount': amount,
+                    'wallet_address': wallet_address,
+                    'timestamp': datetime.now().isoformat()
+                }
+            
+            # Check Web3 connection
+            if not transaction_service.web3 or not transaction_service.web3.is_connected():
+                return {
+                    'success': False,
+                    'error': 'Not connected to Ethereum network',
+                    'currency': currency,
+                    'amount': amount,
+                    'wallet_address': wallet_address,
+                    'timestamp': datetime.now().isoformat()
+                }
+            
+            # Send actual transaction
             import asyncio
             result = asyncio.run(transaction_service.send_eth(
                 to_address=wallet_address,
@@ -183,9 +204,8 @@ class WalletService:
                 currency=currency
             ))
             
-            # Format response
+            # Return transaction result
             if 'error' in result:
-                converter_logger.error(f"Transaction failed: {result['error']}")
                 return {
                     'success': False,
                     'error': result['error'],
@@ -195,8 +215,6 @@ class WalletService:
                     'timestamp': datetime.now().isoformat()
                 }
             else:
-                converter_logger.info(f"Sent {amount:.8f} {currency} to {wallet_address}. TX: {result.get('tx_hash')}")
-                converter_logger.info(f"Transaction type: {'Token transfer' if currency.upper() in ['USDT', 'USDC'] else 'ETH transfer'}")
                 return {
                     'success': True,
                     'currency': currency,
@@ -209,7 +227,6 @@ class WalletService:
                 }
                 
         except Exception as e:
-            converter_logger.error(f"Error sending {currency}: {e}")
             return {
                 'success': False,
                 'error': f'Transaction failed: {str(e)}',

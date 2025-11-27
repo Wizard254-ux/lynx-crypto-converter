@@ -290,14 +290,13 @@ def send_command(args):
             if 'wallet_transactions' in result:
                 print("\n📤 WALLET TRANSACTIONS:")
                 for tx in result['wallet_transactions']:
-                    if tx.get('transaction_type') == 'simulated_send':
-                        print(f"   🎭 {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (SIMULATED)")
-                        if tx.get('note'):
-                            print(f"      📝 Note: {tx['note']}")
+                    if not tx.get('success', True):
+                        print(f"   ❌ {tx['currency']}: {tx.get('error', 'Transaction failed')}")
+                    elif tx.get('tx_hash'):
+                        print(f"   ✅ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}...")
+                        print(f"      🔗 TX: {tx['tx_hash']}")
                     else:
-                        print(f"   ✅ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (REAL)")
-                        if tx.get('tx_hash'):
-                            print(f"      🔗 TX: {tx['tx_hash']}")
+                        print(f"   ⏳ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (Pending)")
             
             # Get wallet address from environment
             wallet_address = os.getenv('EURC_WALLET', 'Address not configured')
@@ -455,14 +454,13 @@ def send_saved_command(args):
             if 'wallet_transactions' in result:
                 print("\n📤 WALLET TRANSACTIONS:")
                 for tx in result['wallet_transactions']:
-                    if tx.get('transaction_type') == 'simulated_send':
-                        print(f"   🎭 {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (SIMULATED)")
-                        if tx.get('note'):
-                            print(f"      📝 Note: {tx['note']}")
+                    if not tx.get('success', True):
+                        print(f"   ❌ {tx['currency']}: {tx.get('error', 'Transaction failed')}")
+                    elif tx.get('tx_hash'):
+                        print(f"   ✅ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}...")
+                        print(f"      🔗 TX: {tx['tx_hash']}")
                     else:
-                        print(f"   ✅ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (REAL)")
-                        if tx.get('tx_hash'):
-                            print(f"      🔗 TX: {tx['tx_hash']}")
+                        print(f"   ⏳ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (Pending)")
         else:
             error = response.json() if response.headers.get('content-type') == 'application/json' else {'error': response.text}
             print(f"\n❌ Send failed: {error.get('error', 'Unknown error')}")
