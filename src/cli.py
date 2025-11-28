@@ -5,13 +5,19 @@ Milestone 1: Parse balance files from command line
 
 import argparse
 import sys
+import os
+
+# Add src directory to Python path if not already there
+src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)))
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+
 from parser import BalanceParser
 from tabulate import tabulate
 import json
 import webbrowser
 import subprocess
 import requests
-import os
 from dotenv import load_dotenv
 
 
@@ -236,8 +242,18 @@ def setup_private_key():
 
 
 def send_command(args):
-    """Handle send command - direct wallet service call"""
+    """Handle send command - Direct blockchain transaction using real Web3 engine"""
+    import json
+    import asyncio
+    from transaction_service import get_transaction_service
+    from converter import crypto_converter
+    
+    # Load environment variables
     load_dotenv()
+    
+    # Check private key setup
+    if not setup_private_key():
+        return 1
     
     print(f"\n💸 Converting and sending to wallet: {args.file}")
     print("=" * 60)
@@ -248,67 +264,111 @@ def send_command(args):
             print(f"❌ File not found: {args.file}")
             return 1
         
-        # Convert file first
-        sys.path.append('src')
-        from converter import crypto_converter
-        from wallet_service import wallet_service
-        
+        # First, convert the file to get/save conversion data
         print("🔄 Converting balances...")
-        result = crypto_converter.convert_balances(args.file)
+        conversion_result = crypto_converter.convert_balances(args.file)
         
-        if not result.get('success'):
-            print(f"❌ Conversion failed: {result.get('error', 'Unknown error')}")
+        if not conversion_result.get('success'):
+            print(f"❌ Conversion failed: {conversion_result.get('error', 'Unknown error')}")
             return 1
         
-        print("✅ Conversion completed!")
+        print(f"✅ Converted ${conversion_result['total_usd_amount']:,.2f} USD")
         
         # Show conversion summary
-        if 'conversions' in result:
-            print("\n💰 CONVERTED AMOUNTS:")
-            for currency, amount in result['conversions'].items():
-                print(f"   {currency}: {amount:.8f}")
+        print("\n💰 CONVERTED AMOUNTS:")
+        for currency, amount in conversion_result['conversions'].items():
+            print(f"   {currency}: {amount:.8f}")
         
-        # Send each currency using wallet service (same as test_real_transaction.py)
-        print("\n🚀 Sending to wallet...")
-        wallet_transactions = []
-        for currency, amount in result['conversions'].items():
-            print(f"\n💸 Attempting {currency} transaction...")
-            tx_result = wallet_service.send_to_wallet(currency, amount, args.wallet_id)
-            wallet_transactions.append(tx_result)
+        # Get transaction service
+        transaction_service = get_transaction_service()
         
-        # Show results
-        print("\n📤 WALLET TRANSACTIONS:")
-        setup_errors = []
-        for tx in wallet_transactions:
-            if not tx.get('success', True):
-                error_msg = tx.get('error', 'Transaction failed')
-                print(f"   ❌ {tx['currency']}: {error_msg}")
-                if ('Private key not configured' in error_msg or 
-                    'Invalid private key' in error_msg or
-                    'Not connected to Ethereum network' in error_msg):
-                    setup_errors.append(tx)
-            elif tx.get('tx_hash'):
-                print(f"   ✅ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}...")
-                print(f"      🔗 TX: {tx['tx_hash']}")
-            else:
-                print(f"   ⏳ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (Pending)")
-        
-        # Check for setup issues
-        if len(setup_errors) == len(wallet_transactions) and setup_errors:
+        # Check wallet setup
+        if not transaction_service.account:
             print("\n❌ Wallet setup required!")
-            print("\n🔧 SETUP ISSUES:")
-            for tx in setup_errors:
-                print(f"   • {tx['currency']}: {tx.get('error', 'Setup required')}")
-            print("\n💡 To enable real transactions:")
-            print("   1. Run: ./setup-wallet.sh")
-            print("   2. Add your Ethereum private key")
-            print("   3. Fund wallet with ETH for gas fees")
+            print("💡 Run: ./setup-wallet.sh to configure your wallet")
             return 1
         
-        wallet_address = os.getenv('EURC_WALLET', 'Address not configured')
-        print(f"\n🎯 Address: {wallet_address}")
-        return 0
+        if not transaction_service.web3 or not transaction_service.web3.is_connected():
+            print("\n❌ Not connected to Ethereum network")
+            print("💡 Check your ETH_NODE_URL in .env file")
+            return 1
         
+        # Get destination wallet address
+        client_address = os.getenv('EURC_WALLET') or args.wallet_id
+        if not client_address:
+            print("\n❌ No destination wallet address configured")
+            print("💡 Set EURC_WALLET in .env or use --wallet-id")
+            return 1
+        
+        print(f"\n🎯 Destination: {client_address}")
+        print("\n📤 SENDING TRANSACTIONS:")
+        
+        # Send each converted amount using real blockchain transactions
+        wallet_transactions = []
+        for currency, amount in conversion_result['conversions'].items():
+            # Only send supported currencies (ETH, USDT, USDC)
+            if currency.upper() not in ['ETH', 'USDT', 'USDC']:
+                print(f"   ⏭️  {currency}: {amount:.8f} (Not supported for blockchain transactions)")
+                continue
+            
+            print(f"   🚀 Sending {amount:.8f} {currency}...")
+            
+            try:
+                # Use real blockchain transaction
+                result = asyncio.run(transaction_service.send_eth(
+                    to_address=client_address,
+                    amount_eth=amount,
+                    currency=currency
+                ))
+                
+                if 'error' in result:
+                    print(f"   ❌ {currency}: {result['error']}")
+                    wallet_transactions.append({
+                        'success': False,
+                        'currency': currency,
+                        'amount': amount,
+                        'error': result['error'],
+                        'wallet_address': client_address
+                    })
+                else:
+                    print(f"   ✅ {amount:.8f} {currency} → {client_address[:10]}...")
+                    if result.get('tx_hash'):
+                        print(f"      🔗 TX: {result['tx_hash']}")
+                    
+                    wallet_transactions.append({
+                        'success': True,
+                        'currency': currency,
+                        'amount': amount,
+                        'tx_hash': result.get('tx_hash'),
+                        'status': result.get('status', 'pending'),
+                        'wallet_address': client_address
+                    })
+                    
+            except Exception as e:
+                print(f"   ❌ {currency}: Transaction failed - {str(e)}")
+                wallet_transactions.append({
+                    'success': False,
+                    'currency': currency,
+                    'amount': amount,
+                    'error': str(e),
+                    'wallet_address': client_address
+                })
+        
+        # Summary
+        successful_txs = [tx for tx in wallet_transactions if tx.get('success', False)]
+        failed_txs = [tx for tx in wallet_transactions if not tx.get('success', True)]
+        
+        print(f"\n📊 SUMMARY:")
+        print(f"   ✅ Successful: {len(successful_txs)}")
+        print(f"   ❌ Failed: {len(failed_txs)}")
+        
+        if successful_txs:
+            print("\n✅ Successfully sent converted amounts using real blockchain transactions!")
+            return 0
+        else:
+            print("\n❌ All transactions failed")
+            return 1
+            
     except Exception as e:
         print(f"❌ Error: {e}")
         return 1
@@ -419,58 +479,138 @@ def list_conversions_command(args):
 
 
 def send_saved_command(args):
-    """Handle send-saved command"""
+    """Handle send-saved command - Direct blockchain transaction using real Web3 engine"""
+    import json
+    import asyncio
+    from transaction_service import get_transaction_service
+    from conversion_storage import conversion_storage
+    
+    # Load environment variables
+    load_dotenv()
+    
+    # Check private key setup
+    if not setup_private_key():
+        return 1
+    
     print(f"\n💸 Sending saved conversion: {args.conversion_id}")
     print("=" * 60)
     
-    api_url = "http://localhost:5001/api/send-saved"
-    health_url = "http://localhost:5001/health"
-    
     try:
-        response = requests.get(health_url, timeout=3)
-        if response.status_code != 200:
-            print("❌ API server is not running")
+        # Load saved conversion from conversions.json
+        conversion = conversion_storage.get_conversion(args.conversion_id)
+        
+        if not conversion:
+            print(f"❌ Conversion {args.conversion_id} not found")
             return 1
         
-        data = {'conversion_id': args.conversion_id}
-        if hasattr(args, 'wallet_id') and args.wallet_id:
-            data['wallet_id'] = args.wallet_id
+        if conversion.get('sent', False):
+            print(f"❌ Conversion {args.conversion_id} already sent")
+            return 1
         
-        response = requests.post(api_url, json=data, timeout=30)
+        print(f"✅ Found saved conversion: ${conversion['total_usd_amount']:,.2f} USD")
         
-        if response.status_code == 200:
-            result = response.json()
-            print("\n✅ Successfully sent saved conversion!")
+        # Show conversion amounts
+        print("\n💰 CONVERTED AMOUNTS:")
+        for currency, amount in conversion['conversions'].items():
+            print(f"   {currency}: {amount:.8f}")
+        
+        # Get transaction service
+        transaction_service = get_transaction_service()
+        
+        # Check wallet setup
+        if not transaction_service.account:
+            print("\n❌ Wallet setup required!")
+            print("💡 Run: ./setup-wallet.sh to configure your wallet")
+            return 1
+        
+        if not transaction_service.web3 or not transaction_service.web3.is_connected():
+            print("\n❌ Not connected to Ethereum network")
+            print("💡 Check your ETH_NODE_URL in .env file")
+            return 1
+        
+        # Get destination wallet address
+        client_address = os.getenv('EURC_WALLET') or args.wallet_id
+        if not client_address:
+            print("\n❌ No destination wallet address configured")
+            print("💡 Set EURC_WALLET in .env or use --wallet-id")
+            return 1
+        
+        print(f"\n🎯 Destination: {client_address}")
+        print("\n📤 SENDING TRANSACTIONS:")
+        
+        # Send each converted amount using real blockchain transactions
+        wallet_transactions = []
+        for currency, amount in conversion['conversions'].items():
+            # Only send supported currencies (ETH, USDT, USDC)
+            if currency.upper() not in ['ETH', 'USDT', 'USDC']:
+                print(f"   ⏭️  {currency}: {amount:.8f} (Not supported for blockchain transactions)")
+                continue
             
-            if 'conversions' in result:
-                print("\n💰 CONVERTED AMOUNTS:")
-                for currency, amount in result['conversions'].items():
-                    print(f"   {currency}: {amount:.8f}")
+            print(f"   🚀 Sending {amount:.8f} {currency}...")
             
-            # Show transaction details
-            if 'wallet_transactions' in result:
-                print("\n📤 WALLET TRANSACTIONS:")
-                for tx in result['wallet_transactions']:
-                    if not tx.get('success', True):
-                        print(f"   ❌ {tx['currency']}: {tx.get('error', 'Transaction failed')}")
-                    elif tx.get('tx_hash'):
-                        print(f"   ✅ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}...")
-                        print(f"      🔗 TX: {tx['tx_hash']}")
-                    else:
-                        print(f"   ⏳ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (Pending)")
+            try:
+                # Use real blockchain transaction
+                result = asyncio.run(transaction_service.send_eth(
+                    to_address=client_address,
+                    amount_eth=amount,
+                    currency=currency
+                ))
+                
+                if 'error' in result:
+                    print(f"   ❌ {currency}: {result['error']}")
+                    wallet_transactions.append({
+                        'success': False,
+                        'currency': currency,
+                        'amount': amount,
+                        'error': result['error'],
+                        'wallet_address': client_address
+                    })
+                else:
+                    print(f"   ✅ {amount:.8f} {currency} → {client_address[:10]}...")
+                    if result.get('tx_hash'):
+                        print(f"      🔗 TX: {result['tx_hash']}")
+                    
+                    wallet_transactions.append({
+                        'success': True,
+                        'currency': currency,
+                        'amount': amount,
+                        'tx_hash': result.get('tx_hash'),
+                        'status': result.get('status', 'pending'),
+                        'wallet_address': client_address
+                    })
+                    
+            except Exception as e:
+                print(f"   ❌ {currency}: Transaction failed - {str(e)}")
+                wallet_transactions.append({
+                    'success': False,
+                    'currency': currency,
+                    'amount': amount,
+                    'error': str(e),
+                    'wallet_address': client_address
+                })
+        
+        # Mark as sent if any transactions succeeded
+        successful_txs = [tx for tx in wallet_transactions if tx.get('success', False)]
+        if successful_txs:
+            conversion_storage.mark_as_sent(args.conversion_id)
+        
+        # Summary
+        failed_txs = [tx for tx in wallet_transactions if not tx.get('success', True)]
+        
+        print(f"\n📊 SUMMARY:")
+        print(f"   ✅ Successful: {len(successful_txs)}")
+        print(f"   ❌ Failed: {len(failed_txs)}")
+        
+        if successful_txs:
+            print("\n✅ Successfully sent saved conversion using real blockchain transactions!")
+            return 0
         else:
-            error = response.json() if response.headers.get('content-type') == 'application/json' else {'error': response.text}
-            print(f"\n❌ Send failed: {error.get('error', 'Unknown error')}")
+            print("\n❌ All transactions failed")
             return 1
             
-    except requests.exceptions.ConnectionError:
-        print("❌ API server is not running")
-        return 1
     except Exception as e:
         print(f"❌ Error: {e}")
         return 1
-    
-    return 0
 
 
 def main():
