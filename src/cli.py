@@ -278,6 +278,25 @@ def send_command(args):
         
         if response.status_code == 200:
             result = response.json()
+            
+            # Check if all transactions failed due to setup issues
+            wallet_transactions = result.get('wallet_transactions', [])
+            setup_errors = [tx for tx in wallet_transactions if not tx.get('success', True) and 
+                          ('Private key not configured' in tx.get('error', '') or 
+                           'Invalid private key' in tx.get('error', '') or
+                           'Not connected to Ethereum network' in tx.get('error', ''))]
+            
+            if len(setup_errors) == len(wallet_transactions) and setup_errors:
+                print("\n❌ Wallet setup required!")
+                print("\n🔧 SETUP ISSUES:")
+                for tx in setup_errors:
+                    print(f"   • {tx['currency']}: {tx.get('error', 'Setup required')}")
+                print("\n💡 To enable real transactions:")
+                print("   1. Run: ./setup-wallet.sh")
+                print("   2. Add your Ethereum private key")
+                print("   3. Fund wallet with ETH for gas fees")
+                return 1
+            
             print("\n✅ Successfully sent to wallet!")
             
             # Show conversion summary

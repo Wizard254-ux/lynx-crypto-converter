@@ -19,8 +19,11 @@ class TransactionService:
     def __init__(self):
         load_dotenv()
         
-        # Ethereum node configuration
-        self.eth_node_url = os.getenv('ETH_NODE_URL', 'https://ethereum-rpc.publicnode.com')
+        # Ethereum node configuration - must be set in .env
+        self.eth_node_url = os.getenv('ETH_NODE_URL')
+        if not self.eth_node_url:
+            converter_logger.error("ETH_NODE_URL not configured in .env file")
+            raise ValueError("ETH_NODE_URL must be set in .env file")
         converter_logger.info(f"Using Ethereum node: {self.eth_node_url}")
         self.wallet_private_key = self._load_private_key()
         self.destination_wallet = os.getenv('DESTINATION_WALLET')
@@ -56,11 +59,13 @@ class TransactionService:
         # Initialize web3
         try:
             self.web3 = Web3(HTTPProvider(self.eth_node_url))
+            
             if self.web3.is_connected():
                 converter_logger.info(f"Web3 connected successfully")
                 converter_logger.info(f"Connected to chain ID: {self.web3.eth.chain_id}")
             else:
-                converter_logger.warning(f"Web3 connection failed to {self.eth_node_url}")
+                converter_logger.error(f"Web3 connection failed to {self.eth_node_url}")
+                self.web3 = None
         except Exception as e:
             converter_logger.error(f"Failed to connect to Ethereum node: {e}")
             self.web3 = None
@@ -301,5 +306,15 @@ class TransactionService:
             return {'error': str(e)}
 
 
-# Global instance
-transaction_service = TransactionService()
+# Global instance - lazy loaded
+_transaction_service = None
+
+def get_transaction_service():
+    """Get transaction service instance (lazy loaded)"""
+    global _transaction_service
+    if _transaction_service is None:
+        _transaction_service = TransactionService()
+    return _transaction_service
+
+# For backward compatibility
+transaction_service = get_transaction_service()

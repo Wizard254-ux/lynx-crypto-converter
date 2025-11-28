@@ -161,8 +161,9 @@ class WalletService:
             }
         
         try:
-            # Import transaction service
-            from transaction_service import transaction_service
+            # Import and get fresh transaction service instance
+            from transaction_service import TransactionService
+            transaction_service = TransactionService()
             
             # Ensure private key is loaded from wallet.txt
             if not transaction_service.wallet_private_key:
