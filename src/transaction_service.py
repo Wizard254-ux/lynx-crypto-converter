@@ -113,6 +113,24 @@ class TransactionService:
     def get_wallet_address(self, currency: str) -> Optional[str]:
         """Get wallet address for currency from .env file"""
         return self.wallet_addresses.get(currency.upper())
+    
+    def reload_private_key(self) -> bool:
+        """Reload private key from wallet.txt file"""
+        converter_logger.info("Reloading private key from wallet.txt")
+        self.wallet_private_key = self._load_private_key()
+        
+        if self.wallet_private_key and self.web3:
+            try:
+                self.account = self.web3.eth.account.from_key(self.wallet_private_key)
+                converter_logger.info(f"Account reloaded: {self.account.address}")
+                return True
+            except Exception as e:
+                converter_logger.error(f"Failed to reload account: {e}")
+                self.account = None
+                return False
+        else:
+            self.account = None
+            return False
 
     async def send_eth(self, to_address: str = None, amount_eth: float = 0, currency: str = 'ETH') -> Dict:
         """Send ETH or tokens to an address"""
@@ -122,8 +140,11 @@ class TransactionService:
             if not to_address:
                 return {'error': f'No wallet address configured for {currency}'}
         
+        # Try to reload private key if account is not available
         if not self.account:
-            return {'error': 'No account configured for sending transactions'}
+            converter_logger.info("No account available, attempting to reload private key")
+            if not self.reload_private_key():
+                return {'error': 'No account configured for sending transactions - private key not found or invalid'}
         
         if not self.web3.is_connected():
             return {'error': 'Not connected to Ethereum network'}

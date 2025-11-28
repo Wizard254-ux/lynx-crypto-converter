@@ -164,16 +164,18 @@ class WalletService:
             # Import transaction service
             from transaction_service import transaction_service
             
-            # Check if we have a private key and valid account
+            # Ensure private key is loaded from wallet.txt
             if not transaction_service.wallet_private_key:
-                return {
-                    'success': False,
-                    'error': 'Private key not configured. Run ./setup-wallet.sh to configure your wallet.',
-                    'currency': currency,
-                    'amount': amount,
-                    'wallet_address': wallet_address,
-                    'timestamp': datetime.now().isoformat()
-                }
+                converter_logger.info("Private key not loaded, attempting to reload from wallet.txt")
+                if not transaction_service.reload_private_key():
+                    return {
+                        'success': False,
+                        'error': 'Private key not found in ~/Documents/key/wallet.txt. Run ./setup-wallet.sh to configure your wallet.',
+                        'currency': currency,
+                        'amount': amount,
+                        'wallet_address': wallet_address,
+                        'timestamp': datetime.now().isoformat()
+                    }
             
             if not transaction_service.account:
                 return {
