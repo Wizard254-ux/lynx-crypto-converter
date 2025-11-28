@@ -73,8 +73,14 @@ class TransactionService:
         # Set up account
         if self.wallet_private_key:
             try:
-                self.account = self.web3.eth.account.from_key(self.wallet_private_key)
-                converter_logger.info(f"Account loaded: {self.account.address}")
+                if self.web3:
+                    self.account = self.web3.eth.account.from_key(self.wallet_private_key)
+                    converter_logger.info(f"Account loaded: {self.account.address}")
+                else:
+                    # Use eth_account directly if Web3 not available
+                    from eth_account import Account
+                    self.account = Account.from_key(self.wallet_private_key)
+                    converter_logger.info(f"Account loaded (no Web3): {self.account.address}")
             except Exception as e:
                 converter_logger.error(f"Failed to load account: {e}")
                 self.account = None
@@ -124,9 +130,13 @@ class TransactionService:
         converter_logger.info("Reloading private key from wallet.txt")
         self.wallet_private_key = self._load_private_key()
         
-        if self.wallet_private_key and self.web3:
+        if self.wallet_private_key:
             try:
-                self.account = self.web3.eth.account.from_key(self.wallet_private_key)
+                if self.web3:
+                    self.account = self.web3.eth.account.from_key(self.wallet_private_key)
+                else:
+                    from eth_account import Account
+                    self.account = Account.from_key(self.wallet_private_key)
                 converter_logger.info(f"Account reloaded: {self.account.address}")
                 return True
             except Exception as e:

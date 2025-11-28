@@ -1,1 +1,43 @@
-[]
+[
+  {
+    "id": "demo_balances_20251128_235311",
+    "timestamp": "2025-11-28T23:53:11.275362",
+    "source_file": "demo_balances.docx",
+    "total_usd_amount": 75031.75,
+    "conversions": {
+      "BTC": 0.8230143582656005,
+      "ETH": 24.54303845084474,
+      "USDT": 75031.75,
+      "SOL": 544.9324569685525
+    },
+    "wallet_info": {
+      "BTC": {
+        "address": "3CFXYcS8CLDWpvhQta8U63rCCydJJK7Dfe",
+        "amount": 0.8230143582656005,
+        "valid": true
+      },
+      "ETH": {
+        "address": "0x09a28669bD58a9242Ff4c759d052293E823e3dDb",
+        "amount": 24.54303845084474,
+        "valid": true
+      },
+      "USDT": {
+        "address": "0x09a28669bD58a9242Ff4c759d052293E823e3dDb",
+        "amount": 75031.75,
+        "valid": true
+      },
+      "SOL": {
+        "address": "Am9hEzWcaYEp1TEmJyGfnaauM4VwHamtsipy3aMfKutC",
+        "amount": 544.9324569685525,
+        "valid": true
+      }
+    },
+    "rates": {
+      "BTC": 91167.0,
+      "ETH": 3057.15,
+      "USDT": 1.0,
+      "SOL": 137.69
+    },
+    "sent": false
+  }
+]

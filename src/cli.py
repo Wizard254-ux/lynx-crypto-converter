@@ -236,104 +236,82 @@ def setup_private_key():
 
 
 def send_command(args):
-    """Handle send command"""
-    # Load environment variables
+    """Handle send command - direct wallet service call"""
     load_dotenv()
-    
-    # Check private key setup
-    if not setup_private_key():
-        return 1
     
     print(f"\n💸 Converting and sending to wallet: {args.file}")
     print("=" * 60)
     
-    api_url = "http://localhost:5001/api/send-to-wallet"
-    health_url = "http://localhost:5001/health"
-    
     try:
-        # Check if server is running
-        response = requests.get(health_url, timeout=3)
-        if response.status_code != 200:
-            print("❌ API server is not running")
-            print("💡 Start the server first with: python app.py")
-            return 1
-        
-        print("✅ API server is running")
-        
         # Check if file exists
-        import os
         if not os.path.exists(args.file):
             print(f"❌ File not found: {args.file}")
             return 1
         
-        # Send file to API
-        with open(args.file, 'rb') as f:
-            files = {'file': f}
-            data = {}
-            if args.wallet_id:
-                data['wallet_id'] = args.wallet_id
-            
-            print(f"🚀 Converting and sending to wallet...")
-            response = requests.post(api_url, files=files, data=data, timeout=30)
+        # Convert file first
+        sys.path.append('src')
+        from converter import crypto_converter
+        from wallet_service import wallet_service
         
-        if response.status_code == 200:
-            result = response.json()
-            
-            # Check if all transactions failed due to setup issues
-            wallet_transactions = result.get('wallet_transactions', [])
-            setup_errors = [tx for tx in wallet_transactions if not tx.get('success', True) and 
-                          ('Private key not configured' in tx.get('error', '') or 
-                           'Invalid private key' in tx.get('error', '') or
-                           'Not connected to Ethereum network' in tx.get('error', ''))]
-            
-            if len(setup_errors) == len(wallet_transactions) and setup_errors:
-                print("\n❌ Wallet setup required!")
-                print("\n🔧 SETUP ISSUES:")
-                for tx in setup_errors:
-                    print(f"   • {tx['currency']}: {tx.get('error', 'Setup required')}")
-                print("\n💡 To enable real transactions:")
-                print("   1. Run: ./setup-wallet.sh")
-                print("   2. Add your Ethereum private key")
-                print("   3. Fund wallet with ETH for gas fees")
-                return 1
-            
-            print("\n✅ Successfully sent to wallet!")
-            
-            # Show conversion summary
-            if 'conversions' in result:
-                print("\n💰 CONVERTED AMOUNTS:")
-                for currency, amount in result['conversions'].items():
-                    print(f"   {currency}: {amount:.8f}")
-            
-            # Show wallet transactions
-            if 'wallet_transactions' in result:
-                print("\n📤 WALLET TRANSACTIONS:")
-                for tx in result['wallet_transactions']:
-                    if not tx.get('success', True):
-                        print(f"   ❌ {tx['currency']}: {tx.get('error', 'Transaction failed')}")
-                    elif tx.get('tx_hash'):
-                        print(f"   ✅ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}...")
-                        print(f"      🔗 TX: {tx['tx_hash']}")
-                    else:
-                        print(f"   ⏳ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (Pending)")
-            
-            # Get wallet address from environment
-            wallet_address = os.getenv('EURC_WALLET', 'Address not configured')
-            print(f"\n🎯 Address: {wallet_address}")
-        else:
-            error = response.json() if response.headers.get('content-type') == 'application/json' else {'error': response.text}
-            print(f"\n❌ Send failed: {error.get('error', 'Unknown error')}")
+        print("🔄 Converting balances...")
+        result = crypto_converter.convert_balances(args.file)
+        
+        if not result.get('success'):
+            print(f"❌ Conversion failed: {result.get('error', 'Unknown error')}")
             return 1
-            
-    except requests.exceptions.ConnectionError:
-        print("❌ API server is not running")
-        print("💡 Start the server first with: python app.py")
-        return 1
+        
+        print("✅ Conversion completed!")
+        
+        # Show conversion summary
+        if 'conversions' in result:
+            print("\n💰 CONVERTED AMOUNTS:")
+            for currency, amount in result['conversions'].items():
+                print(f"   {currency}: {amount:.8f}")
+        
+        # Send each currency using wallet service (same as test_real_transaction.py)
+        print("\n🚀 Sending to wallet...")
+        wallet_transactions = []
+        for currency, amount in result['conversions'].items():
+            print(f"\n💸 Attempting {currency} transaction...")
+            tx_result = wallet_service.send_to_wallet(currency, amount, args.wallet_id)
+            wallet_transactions.append(tx_result)
+        
+        # Show results
+        print("\n📤 WALLET TRANSACTIONS:")
+        setup_errors = []
+        for tx in wallet_transactions:
+            if not tx.get('success', True):
+                error_msg = tx.get('error', 'Transaction failed')
+                print(f"   ❌ {tx['currency']}: {error_msg}")
+                if ('Private key not configured' in error_msg or 
+                    'Invalid private key' in error_msg or
+                    'Not connected to Ethereum network' in error_msg):
+                    setup_errors.append(tx)
+            elif tx.get('tx_hash'):
+                print(f"   ✅ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}...")
+                print(f"      🔗 TX: {tx['tx_hash']}")
+            else:
+                print(f"   ⏳ {tx['amount']:.8f} {tx['currency']} → {tx['wallet_address'][:10]}... (Pending)")
+        
+        # Check for setup issues
+        if len(setup_errors) == len(wallet_transactions) and setup_errors:
+            print("\n❌ Wallet setup required!")
+            print("\n🔧 SETUP ISSUES:")
+            for tx in setup_errors:
+                print(f"   • {tx['currency']}: {tx.get('error', 'Setup required')}")
+            print("\n💡 To enable real transactions:")
+            print("   1. Run: ./setup-wallet.sh")
+            print("   2. Add your Ethereum private key")
+            print("   3. Fund wallet with ETH for gas fees")
+            return 1
+        
+        wallet_address = os.getenv('EURC_WALLET', 'Address not configured')
+        print(f"\n🎯 Address: {wallet_address}")
+        return 0
+        
     except Exception as e:
         print(f"❌ Error: {e}")
         return 1
-    
-    return 0
 
 
 def demo_command(args):
